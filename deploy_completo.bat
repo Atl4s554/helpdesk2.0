@@ -22,7 +22,7 @@ REM ==================================
 REM 3. COPIAR CLASSES COMPILADAS
 REM ==================================
 echo [3/5] Copiando classes compiladas...
-xcopy /E /I /Y out\production\help-desk-ucb\* web\WEB-INF\classes\
+xcopy /E /I /Y out\production\helpdesk2.0\* web\WEB-INF\classes\
 
 if errorlevel 1 (
     echo ERRO: Falha ao copiar classes!
