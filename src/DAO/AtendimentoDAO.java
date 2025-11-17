@@ -10,28 +10,29 @@ import java.util.Date; // Import java.util.Date
  * e as classe especificas para a entidade Atendimento **/
 public class AtendimentoDAO implements DAO<Atendimento> {
 
-    private Connection connection;
+    // O ideal é não manter a conexão como variável de instância.
+    // private Connection connection;
 
     public AtendimentoDAO() {
-        // É melhor pegar a conexão em cada método para evitar que ela feche.
-        // Mas vou manter sua lógica de construtor por enquanto.
-        this.connection = DBConnection.getConnection();
+        // this.connection = DBConnection.getConnection(); // Removido
     }
 
     /**
      * CORRIGIDO: Este método agora insere todos os campos, incluindo tempo_gasto_min.
-     * Ele substitui o 'inserir' e o 'create' antigos.
+     * Ele é o único método de inserção.
      */
     @Override
     public void create(Atendimento atendimento) {
         String sql = "INSERT INTO atendimento (id_chamado, id_tecnico, data_atendimento, descricao, tempo_gasto_min) VALUES (?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection(); // Pega uma conexão nova
+
+        // Pega uma conexão nova e fecha automaticamente
+        try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setInt(1, atendimento.getIdChamado());
             stmt.setInt(2, atendimento.getIdTecnico());
-            // CORREÇÃO: Converte java.util.Date para java.sql.Timestamp
-            stmt.setTimestamp(3, new Timestamp(atendimento.getDataAtendimento().getTime()));
+            // CORREÇÃO: Pega o LocalDateTime do modelo e converte para Timestamp
+            stmt.setTimestamp(3, Timestamp.valueOf(atendimento.getDataAtendimento()));
             stmt.setString(4, atendimento.getDescricao());
             stmt.setInt(5, atendimento.getTempoGastoMin());
             stmt.executeUpdate();
@@ -67,12 +68,11 @@ public class AtendimentoDAO implements DAO<Atendimento> {
 
     @Override
     public void update(Atendimento atendimento) {
-        // CORREÇÃO: Atualizar o SQL para incluir tempo_gasto_min
         String sql = "UPDATE atendimento SET descricao = ?, data_atendimento = ?, chamado_id = ?, tecnico_id = ?, tempo_gasto_min = ? WHERE id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, atendimento.getDescricao());
-            stmt.setTimestamp(2, new Timestamp(atendimento.getDataAtendimento().getTime()));
+            stmt.setTimestamp(2, Timestamp.valueOf(atendimento.getDataAtendimento()));
             stmt.setInt(3, atendimento.getIdChamado());
             stmt.setInt(4, atendimento.getIdTecnico());
             stmt.setInt(5, atendimento.getTempoGastoMin());
@@ -137,19 +137,18 @@ public class AtendimentoDAO implements DAO<Atendimento> {
         Atendimento atendimento = new Atendimento();
         atendimento.setId(rs.getInt("id"));
         atendimento.setDescricao(rs.getString("descricao"));
-        // CORREÇÃO: Converte java.sql.Timestamp para java.util.Date
-        atendimento.setDataAtendimento(rs.getTimestamp("data_atendimento"));
-        atendimento.setIdChamado(rs.getInt("chamado_id"));
-        atendimento.setIdTecnico(rs.getInt("tecnico_id"));
-        // Adiciona o tempo gasto, se a coluna existir (caso contrário, pode dar erro)
+        // CORREÇÃO: Converte java.sql.Timestamp para java.time.LocalDateTime
+        atendimento.setDataAtendimento(rs.getTimestamp("data_atendimento").toLocalDateTime());
+        atendimento.setChamadoId(rs.getInt("chamado_id"));
+        atendimento.setTecnicoId(rs.getInt("tecnico_id"));
+
         try {
             atendimento.setTempoGastoMin(rs.getInt("tempo_gasto_min"));
         } catch (SQLException e) {
-            // Ignora se a coluna não existir
+            atendimento.setTempoGastoMin(0); // Coluna pode não existir
         }
         return atendimento;
     }
 
-    // REMOVIDO: O método 'inserir' duplicado foi removido.
-    // A lógica dele foi movida para o método 'create'.
+    // O método 'inserir' duplicado foi removido.
 }

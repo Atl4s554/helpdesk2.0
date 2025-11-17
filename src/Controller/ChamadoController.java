@@ -58,6 +58,7 @@ public class ChamadoController {
     public void atualizarStatusChamado(int chamadoId, String novoStatus) {
         chamadoDAO.atualizarStatus(chamadoId, novoStatus);
         // Adiciona log/histórico se desejar
+        // CORREÇÃO: Usando o TipoLog do LogSistema
         logController.logar(0, LogSistema.TipoLog.ATUALIZACAO, "Status do chamado #" + chamadoId + " alterado para " + novoStatus);
     }
 

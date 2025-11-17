@@ -10,6 +10,9 @@ public class Usuario {
     private String email;
     private String senha;
 
+    // NOVO campo: muitas servlets chamam getPerfil()
+    // Use String para máxima compatibilidade com código legado.
+    private String perfil;
 
     public Usuario() {}
 
@@ -19,14 +22,20 @@ public class Usuario {
         this.senha = senha;
     }
 
+    // Construtor com id (compatibilidade com chamadas que passam id)
+    public Usuario(int id, String nome, String email, String senha) {
+        this.id = id;
+        this.nome = nome;
+        this.email = email;
+        this.senha = senha;
+    }
 
+    // Getters / Setters padrão
     public int getId() {
-
         return id;
     }
 
     public void setId(int id) {
-
         this.id = id;
     }
 
@@ -54,8 +63,17 @@ public class Usuario {
         this.senha = senha;
     }
 
+    // Perfil: getter/setter adicionados para compatibilidade com servlets/views
+    public String getPerfil() {
+        return perfil;
+    }
+
+    public void setPerfil(String perfil) {
+        this.perfil = perfil;
+    }
+
     @Override
     public String toString() {
-        return "ID: " + id + ", Nome: " + nome + ", Email: " + email;
+        return "ID: " + id + ", Nome: " + nome + ", Email: " + email + (perfil != null ? ", Perfil: " + perfil : "");
     }
 }

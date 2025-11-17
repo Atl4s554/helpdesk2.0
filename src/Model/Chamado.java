@@ -9,21 +9,36 @@ public class Chamado {
     private int id;
     private String titulo;
     private String descricao;
-    private String prioridade; // Não está no script SQL, mas é um atributo forte no DER. Vou manter.
+    private String prioridade; // mantive
     private String status;
     private LocalDateTime dataAbertura;
     private LocalDateTime dataFechamento;
-    private int clienteId; // fk_id_cliente no código original, cliente_id no script SQL
-    private Integer tecnicoId; // tecnico_id no script SQL (pode ser NULL)
-    private int empresaId; // fk_id_empresa no código original, empresa_id no script SQL
-
+    private int clienteId;
+    private Integer tecnicoId; // pode ser null
+    private int empresaId;
 
     public Chamado() {
         this.dataAbertura = LocalDateTime.now();
         this.status = "Aberto";
     }
 
+    // Construtor com id (compatibilidade)
+    public Chamado(int id, String titulo, String descricao, String prioridade, String status,
+                   LocalDateTime dataAbertura, LocalDateTime dataFechamento,
+                   int clienteId, Integer tecnicoId, int empresaId) {
+        this.id = id;
+        this.titulo = titulo;
+        this.descricao = descricao;
+        this.prioridade = prioridade;
+        this.status = status;
+        this.dataAbertura = dataAbertura;
+        this.dataFechamento = dataFechamento;
+        this.clienteId = clienteId;
+        this.tecnicoId = tecnicoId;
+        this.empresaId = empresaId;
+    }
 
+    // Getters / Setters normais
     public int getId() {
         return id;
     }
@@ -31,6 +46,7 @@ public class Chamado {
     public void setId(int id) {
         this.id = id;
     }
+
 
     public String getTitulo() {
         return titulo;
@@ -101,6 +117,52 @@ public class Chamado {
     }
 
     public void setEmpresaId(int empresaId) {
+        this.empresaId = empresaId;
+    }
+
+    // ---------- ALIAS / MÉTODOS ADICIONAIS PARA COMPATIBILIDADE ----------
+
+    // métodos com nomes que o código existente frequentemente chama:
+    public int getIdChamado() {
+        return this.id;
+    }
+
+    public void setIdChamado(int id) {
+        this.id = id;
+    }
+
+    // muitos lugares chamavam getTime() para obter data/hora; mapeamos para dataAbertura
+    public LocalDateTime getTime() {
+        return this.dataAbertura;
+    }
+
+    public void setTime(LocalDateTime time) {
+        this.dataAbertura = time;
+    }
+
+    // aliases com nomes alternativos:
+    public int getIdCliente() {
+        return this.clienteId;
+    }
+
+    public void setIdCliente(int clienteId) {
+        this.clienteId = clienteId;
+    }
+
+    // Retorna -1 se não houver técnico atribuído, para compatibilidade com chamadas que esperam int
+    public int getIdTecnico() {
+        return this.tecnicoId != null ? this.tecnicoId : -1;
+    }
+
+    public void setIdTecnico(int tecnicoId) {
+        this.tecnicoId = tecnicoId;
+    }
+
+    public int getIdEmpresa() {
+        return this.empresaId;
+    }
+
+    public void setIdEmpresa(int empresaId) {
         this.empresaId = empresaId;
     }
 

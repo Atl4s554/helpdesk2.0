@@ -47,8 +47,7 @@ public class AtendimentoController {
         );
 
         // 2. Insere o atendimento no MySQL
-        // CORREÇÃO: O método 'inserir' não existia no DAO antigo, mas 'create' sim.
-        // Vamos usar 'create', que foi padronizado no DAO.
+        // CORREÇÃO: O método 'inserir' foi removido do DAO e substituído por 'create'.
         atendimentoDAO.create(atendimento);
 
         // 3. Atualiza o status do chamado no MySQL
@@ -72,7 +71,7 @@ public class AtendimentoController {
             atendimentoDAO.create(atendimento);
             System.out.println("Atendimento registrado com sucesso (ID: " + atendimento.getId() + ").");
 
-            // CORREÇÃO: (Erro linha 59) Este método agora existe no ChamadoController
+            // CORREÇÃO: (Erro linha 63) Este método agora existe e deve compilar
             Chamado chamado = chamadoController.buscarChamadoPorId(atendimento.getChamadoId());
 
             if (chamado != null) {
@@ -89,7 +88,7 @@ public class AtendimentoController {
                 }
 
                 // Adiciona ao histórico no MongoDB
-                // CORREÇÃO: (Erro linha 76) Este método existe no HistoricoAtendimentoController
+                // CORREÇÃO: (Erro linha 81) Este método existe no HistoricoAtendimentoController
                 historicoController.adicionarAtendimento(
                         chamado.getId(),
                         atendimento.getTecnicoId(),

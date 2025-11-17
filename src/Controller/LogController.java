@@ -2,10 +2,10 @@ package Controller;
 
 import Model.mongo.LogSistema;
 import DAO.mongo.LogDAO;
-import java.time.LocalDateTime; // ADICIONADO
-import java.util.Date;          // ADICIONADO
+import java.time.LocalDateTime;
+import java.util.Date; // Import necessário
 import java.util.List;
-import Model.mongo.LogSistema.TipoLog; // ADICIONADO: Importa o TipoLog correto
+import Model.mongo.LogSistema.TipoLog; // CORREÇÃO: Importa o TipoLog correto
 
 /**
  * Controller para gerenciar logs do sistema no MongoDB
@@ -37,7 +37,7 @@ public class LogController {
      */
     public void registrarLog(LogSistema log) {
         try {
-            // CORREÇÃO: O método no LogDAO é 'inserir', não 'create'.
+            // CORREÇÃO: O método no seu LogDAO chama-se 'inserir'
             logDAO.inserir(log);
         } catch (Exception e) {
             System.err.println("Erro ao registrar log: " + e.getMessage());
