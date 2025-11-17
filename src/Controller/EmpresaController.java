@@ -8,9 +8,11 @@ import java.util.List;
 public class EmpresaController {
 
     private EmpresaDAO empresaDAO;
+    private LogController logController;
 
     public EmpresaController() {
         this.empresaDAO = new EmpresaDAO();
+        this.logController = new LogController();
     }
 
     // Função que processa a requisição para cadastrar uma nova empresa
@@ -25,7 +27,13 @@ public class EmpresaController {
 
     // Funções que fazem todo o CRUD da parte da empresa
     public List<Empresa> listarEmpresas() {
-        return empresaDAO.findAll();
+        return empresaDAO.listarTodas(); // Assume que seu DAO tem 'listarTodas()'
+    }
+
+    public void criarEmpresa(String nome, String razaoSocial, String cnpj) {
+        Empresa empresa = new Empresa(0, nome, razaoSocial, cnpj);
+        empresaDAO.inserir(empresa); // Assume que seu DAO tem 'inserir(empresa)'
+        logController.logar(0, LogController.TipoLog.CRIACAO, "Empresa criada: " + nome);
     }
 
     public Empresa buscarEmpresaPorId(int id) {

@@ -1,23 +1,38 @@
 package Model;
 
 import java.time.LocalDateTime;
-
+import java.util.Date; // Importado para o novo construtor
 
 /** Classe que liga o "chamado" ao "tecnico" **/
-
 public class Atendimento {
 
     private int id;
     private String descricao; // Usado para registrar a solução ou o andamento do atendimento
-    private LocalDateTime dataAtendimento;
+    private LocalDateTime dataAtendimento; // Mantido para o seu método antigo
     private int chamadoId;
     private int tecnicoId;
-
+    private int tempoGastoMin; // <-- CAMPO ADICIONADO
 
     public Atendimento() {
         this.dataAtendimento = LocalDateTime.now();
     }
 
+    /**
+     * NOVO CONSTRUTOR:
+     * Adicionado para ser usado pelo AtendimentoController (método do Servlet).
+     * Aceita java.util.Date e o tempoGasto.
+     */
+    public Atendimento(int id, int chamadoId, int tecnicoId, Date dataAtendimento, String descricao, int tempoGastoMin) {
+        this.id = id;
+        this.chamadoId = chamadoId;
+        this.tecnicoId = tecnicoId;
+        // Converte java.util.Date para LocalDateTime
+        this.dataAtendimento = new java.sql.Timestamp(dataAtendimento.getTime()).toLocalDateTime();
+        this.descricao = descricao;
+        this.tempoGastoMin = tempoGastoMin;
+    }
+
+    // Getters e Setters
 
     public int getId() {
         return id;
@@ -43,6 +58,11 @@ public class Atendimento {
         this.dataAtendimento = dataAtendimento;
     }
 
+    // Getter de conveniência para java.util.Date (usado pelo AtendimentoDAO)
+    public Date getDataAtendimentoAsDate() {
+        return java.sql.Timestamp.valueOf(this.dataAtendimento);
+    }
+
     public int getChamadoId() {
         return chamadoId;
     }
@@ -59,9 +79,18 @@ public class Atendimento {
         this.tecnicoId = tecnicoId;
     }
 
+    // Getter e Setter para o novo campo
+    public int getTempoGastoMin() {
+        return tempoGastoMin;
+    }
+
+    public void setTempoGastoMin(int tempoGastoMin) {
+        this.tempoGastoMin = tempoGastoMin;
+    }
+
     @Override
     public String toString() {
-        return String.format("ID: %d, Chamado ID: %d, Técnico ID: %d, Data: %s, Descrição: %s",
-                id, chamadoId, tecnicoId, dataAtendimento.toString(), descricao);
+        return String.format("ID: %d, Chamado ID: %d, Técnico ID: %d, Data: %s, Descrição: %s, Tempo: %d min",
+                id, chamadoId, tecnicoId, dataAtendimento.toString(), descricao, tempoGastoMin);
     }
 }

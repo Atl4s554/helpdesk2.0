@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | UCB Help Desk</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="body-dashboard">
+
+<div id="toast-container"></div>
+
+<div id="modal-container" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modal-title">Título do Modal</h2>
+            <button id="modal-close-btn" class="modal-close">&times;</button>
+        </div>
+        <div id="modal-content" class="modal-content">
+        </div>
+    </div>
+</div>
+
+<header class="header">
+    <div class="header-logo">
+        <i class="fas fa-headset"></i>
+        <h1>UCB Help Desk</h1>
+    </div>
+    <div class="header-user">
+        <span id="welcome-message">Carregando...</span>
+        <button id="logout-btn" class="btn btn-outline">
+            <i class="fas fa-sign-out-alt"></i> Sair
+        </button>
+    </div>
+</header>
+
+<div class="dashboard-container">
+
+    <aside id="sidebar" class="sidebar">
+        <nav id="sidebar-nav">
+        </nav>
+    </aside>
+
+    <main id="main-content" class="main-content">
+        <h2>Carregando...</h2>
+    </main>
+</div>
+
+<script src="js/api.js"></script> <script src="js/ui.js"></script> <script src="js/dashboard.js"></script> </body>
+</html>

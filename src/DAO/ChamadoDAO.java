@@ -3,9 +3,16 @@ package DAO;
 import Model.*;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import Model.Chamado;
+import Model.DBConnection;
+import Model.dto.ChamadoViewDTO; // Importe o novo DTO
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 
 /** Definindo o CRUD do Chamado usando o override em cima da classe abstrata
  * e as classe especificas para a entidade Chamado **/
@@ -133,5 +140,215 @@ public class ChamadoDAO implements DAO<Chamado> {
         // Prioridade é ignorada pois não está no script SQL
         return chamado;
     }
-}
 
+    // Seu método de inserir (abrir chamado)
+    public void abrirChamado(Chamado chamado) {
+        String sql = "INSERT INTO chamado (titulo, descricao, status, prioridade, data_abertura, id_cliente, id_empresa) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, chamado.getTitulo());
+            stmt.setString(2, chamado.getDescricao());
+            stmt.setString(3, chamado.getStatus());
+            stmt.setString(4, chamado.getPrioridade());
+            stmt.setTimestamp(5, new Timestamp(chamado.getDataAbertura().getTime()));
+            stmt.setInt(6, chamado.getIdCliente());
+            stmt.setInt(7, chamado.getIdEmpresa());
+
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Lançar exceção
+        }
+    }
+
+    // --- MÉTODOS NOVOS ADICIONADOS ---
+
+    /**
+     * Conta o número de chamados com um status específico.
+     * NOVO: Necessário para o DashboardServlet.
+     */
+    public int contarChamadosPorStatus(String status) {
+        String sql = "SELECT COUNT(*) FROM chamado WHERE status = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, status);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
+     * Atribui um técnico a um chamado e muda o status para "EM_ATENDIMENTO".
+     * NOVO: Necessário para o ChamadoServlet (ações 'atribuir' e 'pegar').
+     */
+    public void atribuirTecnico(int chamadoId, int tecnicoId) {
+        String sql = "UPDATE chamado SET id_tecnico = ?, status = 'EM_ATENDIMENTO' WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tecnicoId);
+            stmt.setInt(2, chamadoId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Lançar exceção
+        }
+    }
+
+    /**
+     * Atualiza o status de um chamado.
+     * NOVO: Necessário para o AtendimentoController.
+     */
+    public void atualizarStatus(int chamadoId, String novoStatus) {
+        String sql = "UPDATE chamado SET status = ? WHERE id = ?";
+
+        // Se o status for FECHADO, atualiza também a data_fechamento
+        if ("FECHADO".equalsIgnoreCase(novoStatus)) {
+            sql = "UPDATE chamado SET status = ?, data_fechamento = ? WHERE id = ?";
+        }
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, novoStatus);
+            if ("FECHADO".equalsIgnoreCase(novoStatus)) {
+                stmt.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
+                stmt.setInt(3, chamadoId);
+            } else {
+                stmt.setInt(2, chamadoId);
+            }
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Lançar exceção
+        }
+    }
+
+    // Query base para buscar ChamadoViewDTO
+    private final String BASE_VIEW_QUERY =
+            "SELECT c.*, cli.nome as nome_cliente, tec.nome as nome_tecnico, e.nome as nome_empresa " +
+                    "FROM chamado c " +
+                    "JOIN usuario cli ON c.id_cliente = cli.id " +
+                    "JOIN empresa e ON c.id_empresa = e.id " +
+                    "LEFT JOIN usuario tec ON c.id_tecnico = tec.id "; // LEFT JOIN para técnico (pode ser nulo)
+
+    /**
+     * Lista TODOS os chamados com nomes (Admin).
+     * NOVO: Necessário para o ChamadoServlet (action=listarTodos).
+     */
+    public List<ChamadoViewDTO> listarTodosChamadosView() {
+        List<ChamadoViewDTO> chamados = new ArrayList<>();
+        String sql = BASE_VIEW_QUERY + "ORDER BY c.data_abertura DESC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                chamados.add(instanciarChamadoViewDTO(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return chamados;
+    }
+
+    /**
+     * Lista chamados de um cliente específico (Cliente).
+     * NOVO: Necessário para o ChamadoServlet (action=listarMeus).
+     */
+    public List<ChamadoViewDTO> listarChamadosPorClienteView(int clienteId) {
+        List<ChamadoViewDTO> chamados = new ArrayList<>();
+        String sql = BASE_VIEW_QUERY + "WHERE c.id_cliente = ? ORDER BY c.data_abertura DESC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, clienteId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    chamados.add(instanciarChamadoViewDTO(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return chamados;
+    }
+
+    /**
+     * Lista chamados atribuídos a um técnico (Técnico).
+     * NOVO: Necessário para o ChamadoServlet (action=listarAtribuidos).
+     */
+    public List<ChamadoViewDTO> listarChamadosPorTecnicoView(int tecnicoId) {
+        List<ChamadoViewDTO> chamados = new ArrayList<>();
+        String sql = BASE_VIEW_QUERY + "WHERE c.id_tecnico = ? AND c.status != 'FECHADO' ORDER BY c.prioridade, c.data_abertura";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tecnicoId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    chamados.add(instanciarChamadoViewDTO(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return chamados;
+    }
+
+    /**
+     * Lista chamados ABERTOS e sem técnico (Técnico).
+     * NOVO: Necessário para o ChamadoServlet (action=listarAbertos).
+     */
+    public List<ChamadoViewDTO> listarChamadosAbertosView() {
+        List<ChamadoViewDTO> chamados = new ArrayList<>();
+        String sql = BASE_VIEW_QUERY + "WHERE c.status = 'ABERTO' AND c.id_tecnico IS NULL ORDER BY c.prioridade, c.data_abertura";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                chamados.add(instanciarChamadoViewDTO(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return chamados;
+    }
+
+    /**
+     * Helper para criar o DTO a partir do ResultSet.
+     * NOVO: Usado pelos métodos ...View().
+     */
+    private ChamadoViewDTO instanciarChamadoViewDTO(ResultSet rs) throws SQLException {
+        // 1. Cria o objeto Chamado base
+        Chamado chamado = new Chamado(
+                rs.getInt("id"),
+                rs.getString("titulo"),
+                rs.getString("descricao"),
+                rs.getString("status"),
+                rs.getString("prioridade"),
+                rs.getTimestamp("data_abertura"),
+                rs.getTimestamp("data_fechamento"),
+                rs.getInt("id_cliente"),
+                rs.getInt("id_tecnico"), // id_tecnico pode ser 0 se for nulo, o rs.getInt() trata isso
+                rs.getInt("id_empresa")
+        );
+
+        // 2. Pega os campos do JOIN
+        String nomeCliente = rs.getString("nome_cliente");
+        String nomeTecnico = rs.getString("nome_tecnico"); // Pode ser nulo
+        String nomeEmpresa = rs.getString("nome_empresa");
+
+        // 3. Retorna o DTO
+        return new ChamadoViewDTO(chamado, nomeCliente, nomeTecnico, nomeEmpresa);
+    }
+}
