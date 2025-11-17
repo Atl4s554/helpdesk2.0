@@ -4,12 +4,11 @@ import java.time.LocalDateTime;
 import java.util.Date; // Importado para o novo construtor
 
 /** Classe que liga o "chamado" ao "tecnico" **/
-
 public class Atendimento {
 
     private int id;
     private String descricao; // Usado para registrar a solução ou o andamento do atendimento
-    private LocalDateTime dataAtendimento;
+    private LocalDateTime dataAtendimento; // Mantido para o seu método antigo
     private int chamadoId;
     private int tecnicoId;
     private int tempoGastoMin; // <-- CAMPO ADICIONADO
@@ -28,11 +27,7 @@ public class Atendimento {
         this.chamadoId = chamadoId;
         this.tecnicoId = tecnicoId;
         // Converte java.util.Date para LocalDateTime
-        if (dataAtendimento != null) {
-            this.dataAtendimento = new java.sql.Timestamp(dataAtendimento.getTime()).toLocalDateTime();
-        } else {
-            this.dataAtendimento = LocalDateTime.now();
-        }
+        this.dataAtendimento = new java.sql.Timestamp(dataAtendimento.getTime()).toLocalDateTime();
         this.descricao = descricao;
         this.tempoGastoMin = tempoGastoMin;
     }
@@ -59,18 +54,13 @@ public class Atendimento {
         return dataAtendimento;
     }
 
-    /**
-     * Getter de conveniência para java.util.Date (usado pelo AtendimentoDAO)
-     */
-    public Date getDataAtendimentoAsDate() {
-        if (this.dataAtendimento == null) {
-            return new Date(); // Retorna data atual se nulo
-        }
-        return java.sql.Timestamp.valueOf(this.dataAtendimento);
-    }
-
     public void setDataAtendimento(LocalDateTime dataAtendimento) {
         this.dataAtendimento = dataAtendimento;
+    }
+
+    // Getter de conveniência para java.util.Date (usado pelo AtendimentoDAO)
+    public Date getDataAtendimentoAsDate() {
+        return java.sql.Timestamp.valueOf(this.dataAtendimento);
     }
 
     public int getChamadoId() {
@@ -97,7 +87,6 @@ public class Atendimento {
     public void setTempoGastoMin(int tempoGastoMin) {
         this.tempoGastoMin = tempoGastoMin;
     }
-
 
     @Override
     public String toString() {

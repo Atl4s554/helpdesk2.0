@@ -6,6 +6,7 @@ public class Cliente extends Usuario {
 
     private String cpf;
 
+
     public Cliente() {
         super();
     }
@@ -15,11 +16,6 @@ public class Cliente extends Usuario {
         this.cpf = cpf;
     }
 
-    // Construtor compatível com chamadas que passam o id no momento da criação
-    public Cliente(int id, String nome, String email, String senha, String cpf) {
-        super(id, nome, email, senha); // usa construtor com id da superclasse
-        this.cpf = cpf;
-    }
 
     public String getCpf() {
         return cpf;
