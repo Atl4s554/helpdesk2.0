@@ -78,14 +78,14 @@ public class LoginServlet extends HttpServlet {
                 Tecnico tecnico = (Tecnico) usuario;
                 if ("Administrador".equals(tecnico.getEspecialidade())) {
                     tipoUsuario = "ADMIN";
-                    paginaDashboard = "dashboard.html";
+                    paginaDashboard = "dashboard-admin.html";
                 } else {
                     tipoUsuario = "TECNICO";
                     paginaDashboard = "dashboard-tecnico.html";
                 }
             } else {
                 tipoUsuario = "USUARIO";
-                paginaDashboard = "dashboard.html";
+                paginaDashboard = "dashboard-admin.html";
             }
 
             session.setAttribute("tipoUsuario", tipoUsuario);

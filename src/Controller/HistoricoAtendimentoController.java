@@ -4,9 +4,6 @@ import Model.mongo.HistoricoAtendimento;
 import Model.mongo.HistoricoAtendimento.EntradaAtendimento;
 import DAO.mongo.HistoricoAtendimentoDAO;
 import java.util.List;
-import DAO.UsuarioDAO;
-import Model.Usuario;
-import java.util.Date;
 
 /**
  * Controller para gerenciar histórico de atendimentos no MongoDB
@@ -14,37 +11,9 @@ import java.util.Date;
 public class HistoricoAtendimentoController {
 
     private HistoricoAtendimentoDAO historicoDAO;
-    private UsuarioDAO usuarioDAO;
 
     public HistoricoAtendimentoController() {
         this.historicoDAO = new HistoricoAtendimentoDAO();
-        this.usuarioDAO = new UsuarioDAO();
-    }
-
-    /**
-     * NOVO: Método usado pelo Servlet/Controller mais recente.
-     */
-    public void adicionarEntrada(int chamadoId, int idUsuario, String descricao) {
-        // Busca o nome do usuário
-        Usuario usuario = usuarioDAO.buscarPorId(idUsuario); // Assegure que 'buscarPorId' existe no UsuarioDAO
-        String nomeUsuario = (usuario != null) ? usuario.getNome() : "Sistema";
-
-        HistoricoAtendimento.EntradaAtendimento entrada = new HistoricoAtendimento.EntradaAtendimento(
-                idUsuario,
-                nomeUsuario,
-                new Date(),
-                descricao
-        );
-
-        historicoDAO.adicionarEntrada(chamadoId, entrada);
-    }
-
-    /**
-     * Busca o histórico completo de um chamado.
-     * Usado pelo AtendimentoServlet.
-     */
-    public HistoricoAtendimento getHistorico(int chamadoId) {
-        return historicoDAO.buscarPorChamadoId(chamadoId);
     }
 
     /**
@@ -62,8 +31,7 @@ public class HistoricoAtendimentoController {
     }
 
     /**
-     * Adiciona uma entrada de atendimento ao histórico (Método antigo do CLI)
-     * CORREÇÃO: Este é o método que faltava (Erro linha 76).
+     * Adiciona uma entrada de atendimento ao histórico
      */
     public void adicionarAtendimento(int chamadoId, int tecnicoId, String tecnicoNome,
                                      String descricao, int tempoGastoMinutos) {
@@ -71,7 +39,7 @@ public class HistoricoAtendimentoController {
             EntradaAtendimento entrada = new EntradaAtendimento(tecnicoId, tecnicoNome, descricao);
             entrada.setTempoGastoMinutos(tempoGastoMinutos);
 
-            historicoDAO.adicionarEntrada(chamadoId, entrada); // CORREÇÃO: Usando adicionarEntrada do DAO
+            historicoDAO.adicionarAtendimento(chamadoId, entrada);
             System.out.println("Atendimento adicionado ao histórico do chamado " + chamadoId);
         } catch (Exception e) {
             System.err.println("Erro ao adicionar atendimento ao histórico: " + e.getMessage());

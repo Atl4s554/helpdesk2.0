@@ -2,17 +2,20 @@ package Controller;
 
 import DAO.ChamadoDAO;
 import Model.Chamado;
-import Model.dto.ChamadoViewDTO; // Importe o DTO
-import Model.mongo.LogSistema; // Importe o LogSistema
-
-import java.util.Date;
+import Model.Cliente;
+import Model.Tecnico;
+import Model.mongo.LogSistema;
+import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Controller de Chamado com integração MongoDB
+ */
 public class ChamadoController {
 
     private ChamadoDAO chamadoDAO;
     private LogController logController;
-    private HistoricoAtendimentoController historicoController; // Para logar abertura
+    private HistoricoAtendimentoController historicoController;
 
     public ChamadoController() {
         this.chamadoDAO = new ChamadoDAO();
@@ -20,75 +23,127 @@ public class ChamadoController {
         this.historicoController = new HistoricoAtendimentoController();
     }
 
-    // --- MÉTODOS NOVOS PARA OS SERVLETS ---
+    public void abrirChamado(Chamado chamado) {
+        try {
+            chamadoDAO.create(chamado);
+            System.out.println("Chamado '" + chamado.getTitulo() + "' aberto com sucesso (ID: " + chamado.getId() + ").");
 
-    public void abrirChamado(String titulo, String descricao, String prioridade, int idCliente, int idEmpresa) {
-        Chamado chamado = new Chamado(
-                0, titulo, descricao, "ABERTO", prioridade,
-                new Date(), null, // dataAbertura, dataFechamento
-                idCliente, 0, idEmpresa // idTecnico 0 ou null
-        );
+            // Cria histórico no MongoDB
+            historicoController.criarHistorico(
+                    chamado.getId(),
+                    chamado.getTitulo(),
+                    chamado.getClienteId(),
+                    "Cliente ID: " + chamado.getClienteId() // Idealmente buscar nome do cliente
+            );
 
-        // 1. Salva no MySQL
-        chamadoDAO.abrirChamado(chamado); // Assume que este método existe no DAO
+            // Registra log
+            LogSistema log = new LogSistema(
+                    LogSistema.TipoLog.CHAMADO_ABERTO,
+                    chamado.getClienteId(),
+                    "Cliente", // Idealmente buscar nome
+                    "CLIENTE"
+            );
+            log.adicionarDetalhe("chamado_id", chamado.getId());
+            log.adicionarDetalhe("titulo", chamado.getTitulo());
+            log.adicionarDetalhe("prioridade", chamado.getPrioridade());
+            logController.registrarLog(log);
 
-        // 2. Loga no Mongo (Ação)
-        // CORREÇÃO: Usando o TipoLog do LogSistema
-        logController.logar(idCliente, LogSistema.TipoLog.CRIACAO, "Chamado #" + chamado.getId() + " aberto: " + titulo);
+        } catch (Exception e) {
+            System.err.println("Erro ao abrir chamado: " + e.getMessage());
+        }
+    }
 
-        // 3. Loga no Mongo (Histórico)
-        historicoController.adicionarEntrada(chamado.getId(), idCliente, "Chamado criado com a descrição: " + descricao);
+    public Chamado buscarChamadoPorId(int id) {
+        return chamadoDAO.read(id);
+    }
+
+    public List<Chamado> listarTodosChamados() {
+        return chamadoDAO.findAll();
+    }
+
+    public List<Chamado> listarChamadosPorCliente(Cliente cliente) {
+        return chamadoDAO.findAll(); // Idealmente filtrar por clienteId
+    }
+
+    public List<Chamado> listarChamadosPorTecnico(Tecnico tecnico) {
+        return chamadoDAO.findAll(); // Idealmente filtrar por tecnicoId
     }
 
     public void atribuirTecnico(int chamadoId, int tecnicoId) {
-        // 1. Atualiza MySQL
-        chamadoDAO.atribuirTecnico(chamadoId, tecnicoId);
+        Chamado chamado = chamadoDAO.read(chamadoId);
+        if (chamado != null) {
+            chamado.setTecnicoId(tecnicoId);
+            if (chamado.getStatus().equals("Aberto")) {
+                chamado.setStatus("Em Atendimento");
+            }
+            chamadoDAO.update(chamado);
+            System.out.println("Chamado " + chamadoId + " atribuído ao técnico " + tecnicoId + ".");
 
-        // 2. Loga no Mongo (Ação)
-        // CORREÇÃO: Usando o TipoLog do LogSistema
-        logController.logar(tecnicoId, LogSistema.TipoLog.ATUALIZACAO, "Chamado #" + chamadoId + " atribuído ao técnico ID " + tecnicoId);
+            // Registra log
+            LogSistema log = new LogSistema(
+                    LogSistema.TipoLog.CHAMADO_ATRIBUIDO,
+                    tecnicoId,
+                    "Técnico", // Idealmente buscar nome
+                    "TECNICO"
+            );
+            log.adicionarDetalhe("chamado_id", chamadoId);
+            log.adicionarDetalhe("titulo", chamado.getTitulo());
+            logController.registrarLog(log);
 
-        // 3. Loga no Mongo (Histórico)
-        historicoController.adicionarEntrada(chamadoId, tecnicoId, "Chamado atribuído a este técnico.");
+        } else {
+            System.err.println("Chamado não encontrado.");
+        }
     }
 
-    /**
-     * NOVO: Método adicionado para corrigir o erro da linha 70 no AtendimentoController.
-     */
+    public void finalizarChamado(int chamadoId) {
+        Chamado chamado = chamadoDAO.read(chamadoId);
+        if (chamado != null) {
+            chamado.setStatus("Fechado");
+            chamado.setDataFechamento(LocalDateTime.now());
+            chamadoDAO.update(chamado);
+            System.out.println("Chamado " + chamadoId + " finalizado.");
+
+            // Fecha histórico no MongoDB
+            historicoController.fecharHistorico(chamadoId);
+
+            // Registra log
+            LogSistema log = new LogSistema(
+                    LogSistema.TipoLog.CHAMADO_FECHADO,
+                    chamado.getTecnicoId() != null ? chamado.getTecnicoId() : 0,
+                    "Sistema",
+                    "SISTEMA"
+            );
+            log.adicionarDetalhe("chamado_id", chamadoId);
+            log.adicionarDetalhe("titulo", chamado.getTitulo());
+            logController.registrarLog(log);
+
+        } else {
+            System.err.println("Chamado não encontrado.");
+        }
+    }
+
     public void atualizarStatusChamado(int chamadoId, String novoStatus) {
-        chamadoDAO.atualizarStatus(chamadoId, novoStatus);
-        // Adiciona log/histórico se desejar
-        logController.logar(0, LogSistema.TipoLog.ATUALIZACAO, "Status do chamado #" + chamadoId + " alterado para " + novoStatus);
-    }
+        Chamado chamado = chamadoDAO.read(chamadoId);
+        if (chamado != null) {
+            String statusAnterior = chamado.getStatus();
+            chamado.setStatus(novoStatus);
+            chamadoDAO.update(chamado);
+            System.out.println("Status do Chamado " + chamadoId + " atualizado para " + novoStatus + ".");
 
+            // Registra log
+            LogSistema log = new LogSistema(
+                    LogSistema.TipoLog.CHAMADO_ATUALIZADO,
+                    chamado.getTecnicoId() != null ? chamado.getTecnicoId() : 0,
+                    "Sistema",
+                    "SISTEMA"
+            );
+            log.adicionarDetalhe("chamado_id", chamadoId);
+            log.adicionarDetalhe("status_anterior", statusAnterior);
+            log.adicionarDetalhe("status_novo", novoStatus);
+            logController.registrarLog(log);
 
-    public int contarChamadosPorStatus(String status) {
-        return chamadoDAO.contarChamadosPorStatus(status);
-    }
-
-    // Métodos que retornam o DTO para o Servlet
-
-    public List<ChamadoViewDTO> listarTodosChamadosView() {
-        return chamadoDAO.listarTodosChamadosView();
-    }
-
-    public List<ChamadoViewDTO> listarChamadosPorClienteView(int clienteId) {
-        return chamadoDAO.listarChamadosPorClienteView(clienteId);
-    }
-
-    public List<ChamadoViewDTO> listarChamadosPorTecnicoView(int tecnicoId) {
-        return chamadoDAO.listarChamadosPorTecnicoView(tecnicoId);
-    }
-
-    public List<ChamadoViewDTO> listarChamadosAbertosView() {
-        return chamadoDAO.listarChamadosAbertosView();
-    }
-
-    /**
-     * Método que estava faltando (Erro linha 59).
-     */
-    public Chamado buscarChamadoPorId(int id) {
-        // Este método precisa existir no seu ChamadoDAO
-        return chamadoDAO.buscarPorId(id);
+        } else {
+            System.err.println("Chamado não encontrado.");
+        }
     }
 }

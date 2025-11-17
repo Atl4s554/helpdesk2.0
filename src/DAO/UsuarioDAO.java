@@ -2,16 +2,10 @@ package DAO;
 
 import Model.*;
 import Utils.PasswordUtil;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import Model.DBConnection;
-import Model.Tecnico;
-import Model.Usuario;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
 /**
  * DAO de Usuario com hash de senhas usando BCrypt
@@ -181,131 +175,5 @@ public class UsuarioDAO implements DAO<Usuario> {
             e.printStackTrace();
         }
         return usuarios;
-    }
-
-    // Seu método de autenticar (adaptado para retornar Usuario)
-    public Usuario autenticar(String email, String senha) {
-        String sql = "SELECT * FROM usuario WHERE email = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, email);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    // Aqui você deve usar seu PasswordUtil para verificar a senha
-                    // if (PasswordUtil.verificarSenha(senha, rs.getString("senha_hash"))) {
-                    // Por simplicidade, vou comparar direto (TROQUE ISSO PELA SUA LÓGICA DE HASH)
-                    if (senha.equals(rs.getString("senha_hash"))) {
-                        return instanciarUsuario(rs);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    // Seu método de buscar por ID
-    public Usuario buscarPorId(int id) {
-        String sql = "SELECT * FROM usuario WHERE id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return instanciarUsuario(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-
-    // --- MÉTODOS NOVOS ADICIONADOS ---
-
-    /**
-     * Conta usuários por um perfil específico.
-     * NOVO: Necessário para o DashboardServlet.
-     */
-    public int contarUsuariosPorPerfil(String perfil) {
-        String sql = "SELECT COUNT(*) FROM usuario WHERE perfil = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, perfil);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    /**
-     * Exclui um usuário pelo ID.
-     * NOVO: Necessário para o UsuarioServlet (action=excluir).
-     */
-    public void excluirUsuario(int id) {
-        // CUIDADO: Isso pode falhar se o usuário tiver chamados (foreign key).
-        // A lógica real deveria inativar o usuário (SET status = 'INATIVO')
-        String sql = "DELETE FROM usuario WHERE id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, id);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            // Lançar exceção
-        }
-    }
-
-    /**
-     * Lista todos os usuários que são Técnicos.
-     * NOVO: Necessário para o Admin atribuir chamados.
-     */
-    public List<Tecnico> listarTodosTecnicos() {
-        List<Tecnico> tecnicos = new ArrayList<>();
-        String sql = "SELECT * FROM usuario WHERE perfil = 'TECNICO'";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                tecnicos.add((Tecnico) instanciarUsuario(rs)); // Faz o cast
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return tecnicos;
-    }
-
-    // Helper para instanciar Cliente ou Tecnico com base no perfil
-    private Usuario instanciarUsuario(ResultSet rs) throws SQLException {
-        String perfil = rs.getString("perfil");
-        if ("TECNICO".equals(perfil)) {
-            return new Tecnico(
-                    rs.getInt("id"),
-                    rs.getString("nome"),
-                    rs.getString("email"),
-                    rs.getString("senha_hash"),
-                    rs.getString("cpf"),
-                    rs.getString("especialidade")
-            );
-        } else {
-            // Assume Cliente ou Admin (trate Admin se for separado)
-            return new Usuario(
-                    rs.getInt("id"),
-                    rs.getString("nome"),
-                    rs.getString("email"),
-                    rs.getString("senha_hash"),
-                    rs.getString("cpf"),
-                    rs.getString("perfil")
-            );
-        }
     }
 }

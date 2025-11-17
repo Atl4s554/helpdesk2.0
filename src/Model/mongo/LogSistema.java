@@ -2,7 +2,6 @@ package Model.mongo;
 
 import org.bson.types.ObjectId;
 import java.time.LocalDateTime;
-import java.util.Date; // Adicionado para compatibilidade se necessário
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,7 +19,6 @@ public class LogSistema {
     private String usuarioTipo; // CLIENTE, TECNICO, ADMIN
     private Map<String, Object> detalhes; // Informações adicionais flexíveis
     private String ipAddress;
-    private String mensagem; // ADICIONADO - O LogController usa isso.
 
     public LogSistema() {
         this.timestamp = LocalDateTime.now();
@@ -53,12 +51,6 @@ public class LogSistema {
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
     }
-
-    // Sobrecarga para aceitar java.util.Date (se necessário)
-    public void setTimestamp(Date date) {
-        this.timestamp = new java.sql.Timestamp(date.getTime()).toLocalDateTime();
-    }
-
 
     public String getTipo() {
         return tipo;
@@ -108,17 +100,6 @@ public class LogSistema {
         this.ipAddress = ipAddress;
     }
 
-    // ADICIONADO
-    public String getMensagem() {
-        return mensagem;
-    }
-
-    // ADICIONADO
-    public void setMensagem(String mensagem) {
-        this.mensagem = mensagem;
-    }
-
-
     // Métodos auxiliares para adicionar detalhes
 
     public void adicionarDetalhe(String chave, Object valor) {
@@ -132,7 +113,6 @@ public class LogSistema {
     }
 
     // Tipos de log pré-definidos (constantes)
-    // Esta é a classe correta
     public static class TipoLog {
         public static final String LOGIN = "LOGIN";
         public static final String LOGOUT = "LOGOUT";
@@ -145,12 +125,5 @@ public class LogSistema {
         public static final String USUARIO_CRIADO = "USUARIO_CRIADO";
         public static final String EMPRESA_CRIADA = "EMPRESA_CRIADA";
         public static final String ERRO_SISTEMA = "ERRO_SISTEMA";
-
-        // ADICIONADOS DO SEU LogController enum
-        public static final String CRIACAO = "CRIACAO";
-        public static final String ATUALIZACAO = "ATUALIZACAO";
-        public static final String EXCLUSAO = "EXCLUSAO";
-        public static final String ERRO = "ERRO";
-        public static final String ACESSO = "ACESSO";
     }
 }

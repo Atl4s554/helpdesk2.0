@@ -6,72 +6,180 @@ import DAO.UsuarioDAO;
 import Model.Cliente;
 import Model.Tecnico;
 import Model.Usuario;
-import Utils.PasswordUtil; // Seu utilitário de hash
-
-import java.util.ArrayList;
+import Model.mongo.LogSistema;
 import java.util.List;
 
+/**
+ * Controller de Usuario com integração de logs no MongoDB
+ */
 public class UsuarioController {
 
-    private UsuarioDAO usuarioDAO;
     private ClienteDAO clienteDAO;
     private TecnicoDAO tecnicoDAO;
-    private LogController logController; // Para logar ações
+    private UsuarioDAO usuarioDAO;
+    private LogController logController;
 
     public UsuarioController() {
+        this.clienteDAO = new ClienteDAO();
+        this.tecnicoDAO = new TecnicoDAO();
         this.usuarioDAO = new UsuarioDAO();
-        this.clienteDAO = new ClienteDAO(); // Assume que existe
-        this.tecnicoDAO = new TecnicoDAO(); // Assume que existe
         this.logController = new LogController();
     }
 
-    // Método de autenticação (usado pelo LoginServlet)
-    public Usuario autenticarUsuario(String email, String senha) {
-        Usuario usuario = usuarioDAO.autenticar(email, senha); // O DAO deve tratar o HASH
-        if (usuario != null) {
-            logController.logar(usuario.getId(), LogController.TipoLog.LOGIN, "Usuário " + email + " autenticado com sucesso.");
-        } else {
-            logController.logar(0, LogController.TipoLog.LOGIN, "Falha na autenticação para " + email + ".");
+    public void criarCliente(Cliente cliente) {
+        try {
+            clienteDAO.create(cliente);
+            System.out.println("Cliente " + cliente.getNome() + " criado com sucesso (ID: " + cliente.getId() + ").");
+
+            // Registra log no MongoDB
+            logController.registrarLogComDetalhes(
+                    LogSistema.TipoLog.USUARIO_CRIADO,
+                    cliente.getId(),
+                    cliente.getNome(),
+                    "CLIENTE",
+                    "tipo_usuario",
+                    "CLIENTE"
+            );
+
+        } catch (Exception e) {
+            System.err.println("Erro ao criar cliente: " + e.getMessage());
         }
+    }
+
+    public void criarTecnico(Tecnico tecnico) {
+        try {
+            tecnicoDAO.create(tecnico);
+            System.out.println("Técnico " + tecnico.getNome() + " criado com sucesso (ID: " + tecnico.getId() + ").");
+
+            // Registra log no MongoDB
+            logController.registrarLogComDetalhes(
+                    LogSistema.TipoLog.USUARIO_CRIADO,
+                    tecnico.getId(),
+                    tecnico.getNome(),
+                    "TECNICO",
+                    "especialidade",
+                    tecnico.getEspecialidade()
+            );
+
+        } catch (Exception e) {
+            System.err.println("Erro ao criar técnico: " + e.getMessage());
+        }
+    }
+
+    public List<Cliente> listarClientes() {
+        return clienteDAO.findAll();
+    }
+
+    public List<Tecnico> listarTecnicos() {
+        return tecnicoDAO.findAll();
+    }
+
+    public Usuario autenticar(String email, String senha) {
+        // Usa o método de autenticação com verificação de hash do UsuarioDAO
+        Usuario usuario = usuarioDAO.autenticar(email, senha);
+
+        if (usuario != null) {
+            // Login bem-sucedido
+            String tipoUsuario = "USUARIO";
+
+            // Verifica se é Cliente ou Técnico
+            Cliente cliente = clienteDAO.read(usuario.getId());
+            if (cliente != null) {
+                tipoUsuario = "CLIENTE";
+                usuario = cliente; // Retorna o objeto Cliente completo
+            } else {
+                Tecnico tecnico = tecnicoDAO.read(usuario.getId());
+                if (tecnico != null) {
+                    tipoUsuario = tecnico.getEspecialidade().equals("Administrador") ? "ADMIN" : "TECNICO";
+                    usuario = tecnico; // Retorna o objeto Tecnico completo
+                }
+            }
+
+            // Registra log de login bem-sucedido
+            logController.registrarLog(
+                    LogSistema.TipoLog.LOGIN,
+                    usuario.getId(),
+                    usuario.getNome(),
+                    tipoUsuario
+            );
+
+            System.out.println("Login bem-sucedido: " + usuario.getNome() + " (" + tipoUsuario + ")");
+
+        } else {
+            // Login falhou - registra tentativa
+            logController.registrarLogComDetalhes(
+                    LogSistema.TipoLog.LOGIN_FALHOU,
+                    0,
+                    "Desconhecido",
+                    "DESCONHECIDO",
+                    "email",
+                    email
+            );
+
+            System.out.println("Tentativa de login falhou para: " + email);
+        }
+
         return usuario;
     }
 
-    // --- MÉTODOS NOVOS PARA OS SERVLETS ---
+    /**
+     * Registra logout do usuário
+     */
+    public void logout(Usuario usuario) {
+        if (usuario != null) {
+            String tipoUsuario = usuario instanceof Cliente ? "CLIENTE" :
+                    (usuario instanceof Tecnico ? "TECNICO" : "USUARIO");
 
-    public void criarCliente(String nome, String email, String senha, String cpf) throws Exception {
-        //String senhaHash = PasswordUtil.hashSenha(senha); // Use seu utilitário
-        String senhaHash = senha; // REMOVA ISSO E USE O HASH
-        Cliente cliente = new Cliente(0, nome, email, senhaHash, cpf);
-        clienteDAO.inserir(cliente); // Assume que ClienteDAO tem o método inserir
-        logController.logar(0, LogController.TipoLog.CRIACAO, "Cliente " + email + " criado.");
+            logController.registrarLog(
+                    LogSistema.TipoLog.LOGOUT,
+                    usuario.getId(),
+                    usuario.getNome(),
+                    tipoUsuario
+            );
+        }
     }
 
-    public void criarTecnico(String nome, String email, String senha, String cpf, String especialidade) throws Exception {
-        //String senhaHash = PasswordUtil.hashSenha(senha); // Use seu utilitário
-        String senhaHash = senha; // REMOVA ISSO E USE O HASH
-        Tecnico tecnico = new Tecnico(0, nome, email, senhaHash, cpf, especialidade);
-        tecnicoDAO.inserir(tecnico); // Assume que TecnicoDAO tem o método inserir
-        logController.logar(0, LogController.TipoLog.CRIACAO, "Técnico " + email + " criado.");
+    public Cliente buscarClientePorId(int id) {
+        return clienteDAO.read(id);
     }
 
-    public void excluirUsuario(int id) {
-        // Adicionar lógica de verificação (ex: não excluir se tiver chamados)
-        usuarioDAO.excluirUsuario(id);
-        logController.logar(0, LogController.TipoLog.EXCLUSAO, "Usuário ID " + id + " excluído.");
+    public Tecnico buscarTecnicoPorId(int id) {
+        return tecnicoDAO.read(id);
     }
 
-    public List<Usuario> listarTodosClientesETecnicos() {
-        List<Usuario> usuarios = new ArrayList<>();
-        usuarios.addAll(clienteDAO.listarTodos()); // Assume que ClienteDAO tem listarTodos
-        usuarios.addAll(tecnicoDAO.listarTodos()); // Assume que TecnicoDAO tem listarTodos
-        return usuarios;
+    public void atualizarCliente(Cliente cliente) {
+        try {
+            clienteDAO.update(cliente);
+            System.out.println("Cliente " + cliente.getNome() + " atualizado com sucesso.");
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar cliente: " + e.getMessage());
+        }
     }
 
-    public List<Tecnico> listarTodosTecnicos() {
-        return usuarioDAO.listarTodosTecnicos();
+    public void atualizarTecnico(Tecnico tecnico) {
+        try {
+            tecnicoDAO.update(tecnico);
+            System.out.println("Técnico " + tecnico.getNome() + " atualizado com sucesso.");
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar técnico: " + e.getMessage());
+        }
     }
 
-    public int contarUsuariosPorPerfil(String perfil) {
-        return usuarioDAO.contarUsuariosPorPerfil(perfil);
+    public void deletarCliente(int id) {
+        try {
+            clienteDAO.delete(id);
+            System.out.println("Cliente com ID " + id + " deletado com sucesso.");
+        } catch (Exception e) {
+            System.err.println("Erro ao deletar cliente: " + e.getMessage());
+        }
+    }
+
+    public void deletarTecnico(int id) {
+        try {
+            tecnicoDAO.delete(id);
+            System.out.println("Técnico com ID " + id + " deletado com sucesso.");
+        } catch (Exception e) {
+            System.err.println("Erro ao deletar técnico: " + e.getMessage());
+        }
     }
 }

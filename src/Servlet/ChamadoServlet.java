@@ -1,26 +1,25 @@
 package Servlet;
 
 import Controller.ChamadoController;
-import Model.Cliente;
-import Model.Tecnico;
+import Model.Chamado;
 import Model.Usuario;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
-@WebServlet("/ChamadoServlet")
+/**
+ * Servlet para operações CRUD de Chamados
+ * IMPORTANTE: Usa jakarta.servlet (Tomcat 10+)
+ */
+@WebServlet("/chamados/*")
 public class ChamadoServlet extends HttpServlet {
 
     private ChamadoController chamadoController;
@@ -28,120 +27,156 @@ public class ChamadoServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
+        super.init();
         this.chamadoController = new ChamadoController();
-        // Gson que lida com datas
-        this.gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").create();
+        this.gson = new Gson();
+        System.out.println("✅ ChamadoServlet inicializado!");
     }
 
-    // GET: Listar chamados
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        PrintWriter out = response.getWriter();
-        HttpSession session = request.getSession(false);
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
 
-        if (session == null || session.getAttribute("usuarioLogado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            out.print("{\"message\":\"Sessão expirada.\"}");
+        System.out.println("🔵 ChamadoServlet.doGet() chamado!");
+
+        // Verifica autenticação
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("usuario") == null) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado");
             return;
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuarioLogado");
-        String action = request.getParameter("action");
-
-        try {
-            Object data = null;
-            if ("listarTodos".equals(action) && "ADMIN".equals(usuario.getPerfil())) {
-                // Admin: Lista tudo
-                data = chamadoController.listarTodosChamadosView(); // Você DEVE criar este método no Controller
-            } else if ("listarMeus".equals(action) && "CLIENTE".equals(usuario.getPerfil())) {
-                // Cliente: Lista seus chamados
-                data = chamadoController.listarChamadosPorClienteView(usuario.getId()); // Você DEVE criar este método no Controller
-            } else if ("listarAtribuidos".equals(action) && "TECNICO".equals(usuario.getPerfil())) {
-                // Tecnico: Lista chamados atribuídos a ele
-                data = chamadoController.listarChamadosPorTecnicoView(usuario.getId()); // Você DEVE criar este método no Controller
-            } else if ("listarAbertos".equals(action) && "TECNICO".equals(usuario.getPerfil())) {
-                // Tecnico: Lista chamados sem técnico
-                data = chamadoController.listarChamadosAbertosView(); // Você DEVE criar este método no Controller
-            } else {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.print("{\"message\":\"Ação GET inválida ou não permitida para seu perfil.\"}");
-                out.flush();
-                return;
-            }
-
-            out.print(gson.toJson(data));
-
-        } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.print("{\"message\":\"Erro ao listar chamados: " + e.getMessage() + "\"}");
-            e.printStackTrace();
-        }
-        out.flush();
-    }
-
-    // POST: Criar, Atribuir, Pegar
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         PrintWriter out = response.getWriter();
-        HttpSession session = request.getSession(false);
 
-        if (session == null || session.getAttribute("usuarioLogado") == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            out.print("{\"message\":\"Sessão expirada.\"}");
+        String pathInfo = request.getPathInfo();
+
+        if (pathInfo == null || pathInfo.equals("/")) {
+            // Listar todos os chamados
+            List<Chamado> chamados = chamadoController.listarTodosChamados();
+            out.print(gson.toJson(chamados));
+            System.out.println("📋 Listando " + chamados.size() + " chamados");
+
+        } else {
+            // Buscar chamado específico por ID
+            try {
+                int id = Integer.parseInt(pathInfo.substring(1));
+                Chamado chamado = chamadoController.buscarChamadoPorId(id);
+
+                if (chamado != null) {
+                    out.print(gson.toJson(chamado));
+                    System.out.println("✅ Chamado " + id + " encontrado");
+                } else {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Chamado não encontrado");
+                    System.out.println("❌ Chamado " + id + " não encontrado");
+                }
+            } catch (NumberFormatException e) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "ID inválido");
+            }
+        }
+
+        out.flush();
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        System.out.println("🔵 ChamadoServlet.doPost() chamado!");
+
+        // Verifica autenticação
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("usuario") == null) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado");
             return;
         }
 
-        Usuario usuario = (Usuario) session.getAttribute("usuarioLogado");
-        String action = request.getParameter("action");
-        String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-        Map<String, String> data = gson.fromJson(body, HashMap.class);
-        Map<String, Object> result = new HashMap<>();
+        // Criar novo chamado
+        String titulo = request.getParameter("titulo");
+        String descricao = request.getParameter("descricao");
+        String prioridade = request.getParameter("prioridade");
+        String empresaIdStr = request.getParameter("empresaId");
 
-        try {
-            if ("criar".equals(action) && "CLIENTE".equals(usuario.getPerfil())) {
-                // Cliente abre chamado
-                chamadoController.abrirChamado(
-                        data.get("titulo"),
-                        data.get("descricao"),
-                        data.get("prioridade"),
-                        usuario.getId(),
-                        Integer.parseInt(data.get("idEmpresa"))
-                );
-                result.put("success", true);
-                result.put("message", "Chamado criado com sucesso!");
-
-            } else if ("atribuir".equals(action) && "ADMIN".equals(usuario.getPerfil())) {
-                // Admin atribui técnico
-                int chamadoId = Integer.parseInt(data.get("chamadoId"));
-                int tecnicoId = Integer.parseInt(data.get("tecnicoId"));
-                chamadoController.atribuirTecnico(chamadoId, tecnicoId); // Implementar no Controller
-
-                result.put("success", true);
-                result.put("message", "Técnico atribuído com sucesso!");
-
-            } else if ("pegar".equals(action) && "TECNICO".equals(usuario.getPerfil())) {
-                // Técnico pega chamado (atribui a si mesmo)
-                int chamadoId = Integer.parseInt(data.get("chamadoId"));
-                int tecnicoId = usuario.getId();
-                chamadoController.atribuirTecnico(chamadoId, tecnicoId); // Reutiliza o método
-
-                result.put("success", true);
-                result.put("message", "Chamado atribuído a você!");
-
-            } else {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                result.put("message", "Ação POST inválida ou não permitida.");
-            }
-
-        } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            result.put("message", "Erro: " + e.getMessage());
-            e.printStackTrace();
+        // Validação
+        if (titulo == null || titulo.trim().isEmpty() ||
+                descricao == null || descricao.trim().isEmpty() ||
+                empresaIdStr == null) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dados incompletos");
+            return;
         }
 
-        out.print(gson.toJson(result));
-        out.flush();
+        try {
+            Usuario usuario = (Usuario) session.getAttribute("usuario");
+            int empresaId = Integer.parseInt(empresaIdStr);
+
+            Chamado chamado = new Chamado();
+            chamado.setTitulo(titulo);
+            chamado.setDescricao(descricao);
+            chamado.setPrioridade(prioridade != null ? prioridade : "Média");
+            chamado.setClienteId(usuario.getId());
+            chamado.setEmpresaId(empresaId);
+
+            chamadoController.abrirChamado(chamado);
+
+            System.out.println("✅ Chamado criado: " + chamado.getId());
+
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            PrintWriter out = response.getWriter();
+            out.print(gson.toJson(chamado));
+            out.flush();
+
+        } catch (NumberFormatException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "ID de empresa inválido");
+        }
+    }
+
+    @Override
+    protected void doPut(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        System.out.println("🔵 ChamadoServlet.doPut() chamado!");
+
+        // Verifica autenticação
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("usuario") == null) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado");
+            return;
+        }
+
+        String pathInfo = request.getPathInfo();
+        if (pathInfo == null || pathInfo.equals("/")) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "ID do chamado não fornecido");
+            return;
+        }
+
+        try {
+            int chamadoId = Integer.parseInt(pathInfo.substring(1));
+            String acao = request.getParameter("acao");
+
+            if ("atribuir".equals(acao)) {
+                // Atribuir técnico
+                int tecnicoId = Integer.parseInt(request.getParameter("tecnicoId"));
+                chamadoController.atribuirTecnico(chamadoId, tecnicoId);
+                System.out.println("✅ Técnico " + tecnicoId + " atribuído ao chamado " + chamadoId);
+
+            } else if ("atualizar_status".equals(acao)) {
+                // Atualizar status
+                String novoStatus = request.getParameter("status");
+                chamadoController.atualizarStatusChamado(chamadoId, novoStatus);
+                System.out.println("✅ Status do chamado " + chamadoId + " atualizado para " + novoStatus);
+
+            } else if ("finalizar".equals(acao)) {
+                // Finalizar chamado
+                chamadoController.finalizarChamado(chamadoId);
+                System.out.println("✅ Chamado " + chamadoId + " finalizado");
+            }
+
+            response.setStatus(HttpServletResponse.SC_OK);
+
+        } catch (NumberFormatException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Parâmetros inválidos");
+        }
     }
 }
