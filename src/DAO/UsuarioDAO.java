@@ -176,4 +176,28 @@ public class UsuarioDAO implements DAO<Usuario> {
         }
         return usuarios;
     }
+
+    // ... (dentro da classe UsuarioDAO)
+
+    /**
+     * Conta o total de usuários (Clientes e Técnicos).
+     * @return A contagem total de usuários.
+     */
+    public int countTotalUsuarios() {
+        // Nota: Esta query assume que você tem tabelas 'cliente' e 'tecnico'
+        // Se sua tabela de usuários for unificada, ajuste a query (ex: "SELECT COUNT(*) FROM usuario")
+        String sql = "SELECT (SELECT COUNT(*) FROM cliente) + (SELECT COUNT(*) FROM tecnico)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }

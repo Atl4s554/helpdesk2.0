@@ -133,5 +133,48 @@ public class ChamadoDAO implements DAO<Chamado> {
         // Prioridade é ignorada pois não está no script SQL
         return chamado;
     }
+
+    /**
+     * Conta o número de chamados com um status específico.
+     * @param status O status para contar (ex: "Aberto", "Em Atendimento")
+     * @return A contagem de chamados.
+     */
+    public int countByStatus(String status) {
+        String sql = "SELECT COUNT(*) FROM chamado WHERE status = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, status);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
+     * Conta o número de chamados fechados hoje.
+     * @return A contagem de chamados.
+     */
+    public int countFechadosHoje() {
+        // Usa CURDATE() do MySQL para pegar a data atual
+        String sql = "SELECT COUNT(*) FROM chamado WHERE status = 'Fechado' AND DATE(data_fechamento) = CURDATE()";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }
 
