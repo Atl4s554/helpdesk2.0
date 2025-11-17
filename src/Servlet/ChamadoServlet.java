@@ -4,18 +4,21 @@ import Controller.ChamadoController;
 import Model.Chamado;
 import Model.Usuario;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-
-import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 
+/**
+ * Servlet para operações CRUD de Chamados
+ * IMPORTANTE: Usa jakarta.servlet (Tomcat 10+)
+ */
 @WebServlet("/chamados/*")
 public class ChamadoServlet extends HttpServlet {
 
@@ -24,159 +27,156 @@ public class ChamadoServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
+        super.init();
         this.chamadoController = new ChamadoController();
-        // Configura o GSON para formatar a data
-        this.gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").create();
-        System.out.println("✅ ChamadoServlet (CRUD) inicializado!");
+        this.gson = new Gson();
+        System.out.println("✅ ChamadoServlet inicializado!");
     }
 
-    /**
-     * GET /chamados?acao=listarTodos (Admin)
-     * GET /chamados?acao=listarPorCliente (Cliente)
-     * GET /chamados?acao=listarPorTecnico (Tecnico)
-     * GET /chamados?acao=listarAbertos (Tecnico)
-     * GET /chamados?acao=buscar&id=1 (Todos)
-     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        HttpSession session = request.getSession(false);
+        System.out.println("🔵 ChamadoServlet.doGet() chamado!");
 
+        // Verifica autenticação
+        HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("usuario") == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Usuário não logado.");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado");
             return;
         }
 
-        Usuario usuarioLogado = (Usuario) session.getAttribute("usuario");
-        String acao = request.getParameter("acao");
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        PrintWriter out = response.getWriter();
 
-        try {
-            List<Chamado> chamados;
-            switch (acao) {
-                case "listarTodos":
-                    chamados = chamadoController.listarTodosChamados();
-                    break;
-                case "listarPorCliente":
-                    chamados = chamadoController.listarChamadosPorCliente(usuarioLogado.getId());
-                    break;
-                case "listarPorTecnico":
-                    chamados = chamadoController.listarChamadosPorTecnico(usuarioLogado.getId());
-                    break;
-                case "listarAbertos":
-                    chamados = chamadoController.listarChamadosAbertos();
-                    break;
-                case "buscar":
-                    int id = Integer.parseInt(request.getParameter("id"));
-                    Chamado chamado = chamadoController.buscarChamadoPorId(id);
-                    if (chamado != null) {
-                        response.getWriter().write(gson.toJson(chamado));
-                    } else {
-                        response.sendError(HttpServletResponse.SC_NOT_FOUND, "Chamado não encontrado");
-                    }
-                    return; // Retorna pois não é uma lista
-                default:
-                    throw new Exception("Ação inválida.");
+        String pathInfo = request.getPathInfo();
+
+        if (pathInfo == null || pathInfo.equals("/")) {
+            // Listar todos os chamados
+            List<Chamado> chamados = chamadoController.listarTodosChamados();
+            out.print(gson.toJson(chamados));
+            System.out.println("📋 Listando " + chamados.size() + " chamados");
+
+        } else {
+            // Buscar chamado específico por ID
+            try {
+                int id = Integer.parseInt(pathInfo.substring(1));
+                Chamado chamado = chamadoController.buscarChamadoPorId(id);
+
+                if (chamado != null) {
+                    out.print(gson.toJson(chamado));
+                    System.out.println("✅ Chamado " + id + " encontrado");
+                } else {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Chamado não encontrado");
+                    System.out.println("❌ Chamado " + id + " não encontrado");
+                }
+            } catch (NumberFormatException e) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "ID inválido");
             }
-            response.getWriter().write(gson.toJson(chamados));
-
-        } catch (Exception e) {
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Erro ao buscar chamados: " + e.getMessage());
         }
+
+        out.flush();
     }
 
-    /**
-     * POST /chamados (Cliente: Abrir novo chamado)
-     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        HttpSession session = request.getSession(false);
+        System.out.println("🔵 ChamadoServlet.doPost() chamado!");
 
-        if (session == null || session.getAttribute("usuarioId") == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Usuário não logado.");
+        // Verifica autenticação
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("usuario") == null) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado");
+            return;
+        }
+
+        // Criar novo chamado
+        String titulo = request.getParameter("titulo");
+        String descricao = request.getParameter("descricao");
+        String prioridade = request.getParameter("prioridade");
+        String empresaIdStr = request.getParameter("empresaId");
+
+        // Validação
+        if (titulo == null || titulo.trim().isEmpty() ||
+                descricao == null || descricao.trim().isEmpty() ||
+                empresaIdStr == null) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dados incompletos");
             return;
         }
 
         try {
-            int clienteId = (int) session.getAttribute("usuarioId");
-            String json = getBody(request);
-            Chamado chamado = gson.fromJson(json, Chamado.class);
+            Usuario usuario = (Usuario) session.getAttribute("usuario");
+            int empresaId = Integer.parseInt(empresaIdStr);
 
-            chamadoController.abrirChamado(
-                    chamado.getTitulo(),
-                    chamado.getDescricao(),
-                    clienteId,
-                    chamado.getAnexoId() // Assumindo que o anexoId pode ser nulo
-            );
+            Chamado chamado = new Chamado();
+            chamado.setTitulo(titulo);
+            chamado.setDescricao(descricao);
+            chamado.setPrioridade(prioridade != null ? prioridade : "Média");
+            chamado.setClienteId(usuario.getId());
+            chamado.setEmpresaId(empresaId);
 
-            response.setStatus(HttpServletResponse.SC_CREATED);
-            response.getWriter().write("{\"mensagem\": \"Chamado aberto com sucesso!\"}");
+            chamadoController.abrirChamado(chamado);
 
-        } catch (Exception e) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Erro ao abrir chamado: " + e.getMessage());
+            System.out.println("✅ Chamado criado: " + chamado.getId());
+
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            PrintWriter out = response.getWriter();
+            out.print(gson.toJson(chamado));
+            out.flush();
+
+        } catch (NumberFormatException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "ID de empresa inválido");
         }
     }
 
-    /**
-     * PUT /chamados?acao=atribuir&id=1&tecnicoId=2 (Admin)
-     * PUT /chamados?acao=mudarStatus&id=1&status=EM_ANDAMENTO (Tecnico: Aceitar)
-     * PUT /chamados?acao=mudarStatus&id=1&status=CONCLUIDO (Tecnico: Concluir)
-     */
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        HttpSession session = request.getSession(false);
+        System.out.println("🔵 ChamadoServlet.doPut() chamado!");
 
-        if (session == null || session.getAttribute("usuarioId") == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Usuário não logado.");
+        // Verifica autenticação
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("usuario") == null) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Não autenticado");
             return;
         }
 
-        String acao = request.getParameter("acao");
-        int chamadoId = Integer.parseInt(request.getParameter("id"));
+        String pathInfo = request.getPathInfo();
+        if (pathInfo == null || pathInfo.equals("/")) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "ID do chamado não fornecido");
+            return;
+        }
 
         try {
+            int chamadoId = Integer.parseInt(pathInfo.substring(1));
+            String acao = request.getParameter("acao");
+
             if ("atribuir".equals(acao)) {
+                // Atribuir técnico
                 int tecnicoId = Integer.parseInt(request.getParameter("tecnicoId"));
                 chamadoController.atribuirTecnico(chamadoId, tecnicoId);
-                response.getWriter().write("{\"mensagem\": \"Técnico atribuído com sucesso!\"}");
+                System.out.println("✅ Técnico " + tecnicoId + " atribuído ao chamado " + chamadoId);
 
-            } else if ("mudarStatus".equals(acao)) {
-                String status = request.getParameter("status"); // "EM_ANDAMENTO" ou "CONCLUIDO"
-                int tecnicoId = (int) session.getAttribute("usuarioId"); // Pega o técnico logado
+            } else if ("atualizar_status".equals(acao)) {
+                // Atualizar status
+                String novoStatus = request.getParameter("status");
+                chamadoController.atualizarStatusChamado(chamadoId, novoStatus);
+                System.out.println("✅ Status do chamado " + chamadoId + " atualizado para " + novoStatus);
 
-                // Se o técnico está aceitando (vindo de ABERTO), atribui a ele primeiro
-                if ("EM_ANDAMENTO".equals(status)) {
-                    chamadoController.atribuirTecnico(chamadoId, tecnicoId);
-                }
-
-                chamadoController.atualizarStatusChamado(chamadoId, status);
-                response.getWriter().write("{\"mensagem\": \"Status atualizado com sucesso!\"}");
-
-            } else {
-                throw new Exception("Ação PUT inválida.");
+            } else if ("finalizar".equals(acao)) {
+                // Finalizar chamado
+                chamadoController.finalizarChamado(chamadoId);
+                System.out.println("✅ Chamado " + chamadoId + " finalizado");
             }
-        } catch (Exception e) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Erro ao atualizar chamado: " + e.getMessage());
-        }
-    }
 
-    private String getBody(HttpServletRequest request) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader reader = request.getReader();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
+            response.setStatus(HttpServletResponse.SC_OK);
+
+        } catch (NumberFormatException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Parâmetros inválidos");
         }
-        return sb.toString();
     }
 }
