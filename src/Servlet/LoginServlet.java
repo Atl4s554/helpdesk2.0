@@ -17,7 +17,7 @@ import java.io.IOException;
  * Servlet para autenticação de usuários
  * IMPORTANTE: Usa jakarta.servlet (Tomcat 10+)
  */
-@WebServlet("/login")
+@WebServlet("/api/login")
 public class LoginServlet extends HttpServlet {
 
     private UsuarioController usuarioController;
@@ -32,8 +32,8 @@ public class LoginServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // Redireciona para página de login
-        response.sendRedirect("login.html");
+        // CORREÇÃO: Usa o caminho absoluto do contexto para evitar erro 404
+        response.sendRedirect(request.getContextPath() + "/login.html");
     }
 
     @Override
@@ -51,7 +51,8 @@ public class LoginServlet extends HttpServlet {
         if (email == null || email.trim().isEmpty() ||
                 senha == null || senha.trim().isEmpty()) {
             System.out.println("❌ Campos vazios");
-            response.sendRedirect("login.html?erro=campos_vazios");
+            // CORREÇÃO: Caminho absoluto com parâmetros
+            response.sendRedirect(request.getContextPath() + "/login.html?erro=campos_vazios");
             return;
         }
 
@@ -73,7 +74,7 @@ public class LoginServlet extends HttpServlet {
 
             if (usuario instanceof Cliente) {
                 tipoUsuario = "CLIENTE";
-                paginaDashboard = "dashboard-cliente.html";
+                paginaDashboard = "dashboard-admin.html";
             } else if (usuario instanceof Tecnico) {
                 Tecnico tecnico = (Tecnico) usuario;
                 if ("Administrador".equals(tecnico.getEspecialidade())) {
@@ -81,7 +82,7 @@ public class LoginServlet extends HttpServlet {
                     paginaDashboard = "dashboard-admin.html";
                 } else {
                     tipoUsuario = "TECNICO";
-                    paginaDashboard = "dashboard-tecnico.html";
+                    paginaDashboard = "dashboard-admin.html";
                 }
             } else {
                 tipoUsuario = "USUARIO";
@@ -90,15 +91,18 @@ public class LoginServlet extends HttpServlet {
 
             session.setAttribute("tipoUsuario", tipoUsuario);
 
-            System.out.println("🎯 Redirecionando para: " + paginaDashboard);
+            // Monta o caminho completo para o log
+            String caminhoDestino = request.getContextPath() + "/" + paginaDashboard;
+            System.out.println("🎯 Redirecionando para: " + caminhoDestino);
 
-            // Redireciona para dashboard apropriado
-            response.sendRedirect(paginaDashboard);
+            // CORREÇÃO: Redireciona usando o caminho completo do contexto
+            response.sendRedirect(caminhoDestino);
 
         } else {
             // Login falhou
             System.out.println("❌ Login falhou para: " + email);
-            response.sendRedirect("login.html?erro=credenciais_invalidas");
+            // CORREÇÃO: Caminho absoluto para retorno de erro
+            response.sendRedirect(request.getContextPath() + "/login.html?erro=credenciais_invalidas");
         }
     }
 }

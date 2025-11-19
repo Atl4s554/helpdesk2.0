@@ -2,54 +2,36 @@
  * Ponto de entrada principal quando o HTML do dashboard é carregado.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Define a aba 'dashboard' como ativa ao carregar
     mostrarSecao('dashboard');
-
-    // 2. Adiciona os listeners (ouvintes) para os links da barra lateral
     configurarLinksSidebar();
-
-    // 3. Adiciona o listener para o botão de 'Sair'
-    document.querySelector('button[onclick="logout()"]').addEventListener('click', logout);
 });
 
-/**
- * Adiciona os eventos de clique a todos os links da barra lateral.
- * Isso evita a necessidade de 'onclick' no HTML.
- */
 function configurarLinksSidebar() {
     const links = document.querySelectorAll('.sidebar nav a');
     links.forEach(link => {
-        // Pega o ID da seção a partir do atributo onclick
         const secaoId = link.getAttribute('onclick').match(/'([^']+)'/)[1];
         if (secaoId) {
             link.addEventListener('click', (event) => {
-                event.preventDefault(); // Impede o link de navegar
+                event.preventDefault();
                 mostrarSecao(secaoId);
             });
         }
     });
 }
 
-/**
- * Função central para mostrar uma seção e esconder as outras.
- * @param {string} idSecao - O ID da seção para mostrar (ex: 'dashboard', 'usuarios').
- */
 function mostrarSecao(idSecao) {
-    // 1. Esconde todas as seções
     const secoes = document.querySelectorAll('.main-content section');
     secoes.forEach(secao => {
         secao.classList.remove('secao-ativa');
         secao.classList.add('secao-oculta');
     });
 
-    // 2. Mostra a seção desejada
     const secaoAlvo = document.getElementById('secao-' + idSecao);
     if (secaoAlvo) {
         secaoAlvo.classList.remove('secao-oculta');
         secaoAlvo.classList.add('secao-ativa');
     }
 
-    // 3. Atualiza o link "ativo" na barra lateral
     const links = document.querySelectorAll('.sidebar nav a');
     links.forEach(link => {
         link.classList.remove('active');
@@ -58,120 +40,110 @@ function mostrarSecao(idSecao) {
         }
     });
 
-    // 4. Carrega os dados específicos da seção
     carregarDadosDaSecao(idSecao);
 }
 
-/**
- * Direciona o carregamento de dados com base na seção ativa.
- * @param {string} idSecao - O ID da seção que acabou de ser aberta.
- */
 function carregarDadosDaSecao(idSecao) {
+    // RESTAURANDO A LÓGICA DE FETCH (API)
     switch (idSecao) {
         case 'dashboard':
             carregarEstatisticas();
             carregarLogsRecentes();
             break;
         case 'usuarios':
-            // Funções a serem implementadas
-            // carregarClientes();
-            // carregarTecnicos();
+            // FUNÇÕES QUE JÁ ESTAVAM FUNCIONANDO
+            carregarClientes();
+            carregarTecnicos();
             break;
-        case 'logs':
-            // Função a ser implementada
-            // carregarLogsCompletos();
-            break;
-        // Adicionar outros 'cases' para 'empresas', 'chamados', etc.
+        // ... outros cases
     }
 }
 
-/**
- * * 📊 PASSO 2: BUSCAR ESTATÍSTICAS (MySQL)
- * Busca os dados dos cards do dashboard (Chamados Abertos, etc.).
- * Esta função chama o 'DashboardStatsServlet' que criaremos.
- */
-async function carregarEstatisticas() {
-    // URLs dos Servlets que criaremos
-    const url = 'api/stats'; // Este Servlet buscará as contagens no MySQL
+// FUNÇÕES DE FETCH RESTAURADAS
 
+async function carregarEstatisticas() {
+    const url = 'api/stats';
     try {
         const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
-        }
         const stats = await response.json();
-
-        // Atualiza os números nos cards do HTML
+        // Atualiza os números nos cards do HTML (assume que o Servlet foi corrigido)
         document.getElementById('stat-abertos').textContent = stats.abertos || 0;
         document.getElementById('stat-atendimento').textContent = stats.emAtendimento || 0;
         document.getElementById('stat-fechados').textContent = stats.fechadosHoje || 0;
         document.getElementById('stat-usuarios').textContent = stats.totalUsuarios || 0;
-
     } catch (error) {
         console.error('Erro ao carregar estatísticas:', error);
-        // Exibe 'Erro' nos cards se a busca falhar
-        document.getElementById('stat-abertos').textContent = 'Erro';
-        document.getElementById('stat-atendimento').textContent = 'Erro';
-        document.getElementById('stat-fechados').textContent = 'Erro';
-        document.getElementById('stat-usuarios').textContent = 'Erro';
     }
 }
 
-/**
- * 📝 PASSO 3: BUSCAR LOGS RECENTES (MongoDB)
- * Busca os últimos 5 logs para o painel "Atividades Recentes".
- * Esta função chama o 'LogServlet' que criaremos.
- */
 async function carregarLogsRecentes() {
     const container = document.getElementById('logs-recentes');
-    container.innerHTML = '<p>Carregando...</p>';
-
-    // Este Servlet buscará os dados no MongoDB
-    // Pedimos os 5 mais recentes (limite=5)
     const url = 'api/logs?limite=5';
-
     try {
         const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
-        }
         const logs = await response.json();
-
-        // Limpa o container
         container.innerHTML = '';
+        if (logs && logs.length > 0) {
+            logs.forEach(log => {
+                const dataTimestamp = log.timestamp && log.timestamp.$date ? log.timestamp.$date : log.timestamp;
+                const dataFormatada = new Date(dataTimestamp).toLocaleString('pt-BR');
+                const logMensagem = log.mensagem || 'Mensagem não disponível';
 
-        if (!logs || logs.length === 0) {
-            container.innerHTML = '<p>Nenhuma atividade recente.</p>';
-            return;
+                container.innerHTML += `
+                    <div class="log-item">
+                        <span class="log-timestamp"><strong>${dataFormatada}</strong></span>
+                        <span class="log-tipo">[${log.tipo}]</span>
+                        <span class="log-mensagem">${logMensagem}</span>
+                    </div>
+                `;
+            });
+        } else {
+             container.innerHTML = '<p>Nenhuma atividade recente.</p>';
         }
-
-        // Cria o HTML para cada log
-        logs.forEach(log => {
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-item'; // Você pode estilizar .log-item no seu CSS
-
-            // Converte o timestamp (que vem como string ou objeto) para um formato legível
-            const dataFormatada = new Date(log.timestamp).toLocaleString('pt-BR');
-
-            logEntry.innerHTML = `
-                <span class="log-timestamp"><strong>${dataFormatada}</strong></span>
-                <span class="log-tipo">[${log.tipo}]</span>
-                <span class="log-mensagem">${log.mensagem}</span>
-            `;
-            container.appendChild(logEntry);
-        });
-
     } catch (error) {
         console.error('Erro ao carregar logs recentes:', error);
         container.innerHTML = '<p>Erro ao carregar atividades.</p>';
     }
 }
 
-/**
- * 🚪 PASSO 1: FUNÇÃO DE LOGOUT
- * Redireciona para o Servlet de Logout.
- */
-function logout() {
-    // Vamos mapear seu LogoutServlet para esta URL no web.xml
-    window.location.href = 'api/logout';
+function carregarTecnicos() {
+    // Lógica que funcionava para popular a tabela de Técnicos
+    const url = 'api/tecnicos';
+    const tbody = document.querySelector('#tabela-tecnicos tbody');
+    tbody.innerHTML = '<tr><td colspan="4">Carregando Técnicos...</td></tr>';
+    fetch(url).then(response => response.json()).then(data => {
+        tbody.innerHTML = '';
+        data.forEach(tecnico => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${tecnico.id}</td>
+                <td>${tecnico.nome}</td>
+                <td>${tecnico.email}</td>
+                <td>${tecnico.especialidade || 'N/A'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }).catch(error => console.error('Erro ao carregar técnicos:', error));
 }
+
+function carregarClientes() {
+    // Lógica que funcionava para popular a tabela de Clientes
+    const url = 'api/clientes';
+    const tbody = document.querySelector('#tabela-clientes tbody');
+    tbody.innerHTML = '<tr><td colspan="4">Carregando Clientes...</td></tr>';
+    fetch(url).then(response => response.json()).then(data => {
+        tbody.innerHTML = '';
+        data.forEach(cliente => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${cliente.id}</td>
+                <td>${cliente.nome}</td>
+                <td>${cliente.email}</td>
+                <td>${cliente.cpf || 'N/A'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }).catch(error => console.error('Erro ao carregar clientes:', error));
+}
+
+// ... Outras funções como mostrarFormNovoCliente, etc.

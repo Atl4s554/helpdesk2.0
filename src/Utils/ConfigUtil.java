@@ -47,8 +47,8 @@ public class ConfigUtil {
     private static void setDefaultProperties() {
         System.out.println("Usando configurações padrão (INSEGURO - apenas para desenvolvimento)");
         properties.setProperty("db.mysql.url", "jdbc:mysql://localhost:3306/helpdesk");
-        properties.setProperty("db.mysql.user", "root");
-        properties.setProperty("db.mysql.password", "potato123");
+        properties.setProperty("db.mysql.user", "helpdesk_app");
+        properties.setProperty("db.mysql.password", "helpdesk2025");
         properties.setProperty("db.mysql.driver", "com.mysql.cj.jdbc.Driver");
         properties.setProperty("db.mongo.host", "localhost");
         properties.setProperty("db.mongo.port", "27017");

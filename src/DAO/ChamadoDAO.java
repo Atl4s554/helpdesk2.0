@@ -13,6 +13,10 @@ import java.util.List;
 public class ChamadoDAO implements DAO<Chamado> {
 
     private Connection connection;
+    // src/DAO/ChamadoDAO.java
+
+    private static final String CONTAGEM_BASE = "SELECT COUNT(*) FROM chamado WHERE status = ?";
+    private static final String CONTAGEM_FECHADOS_HOJE = "SELECT COUNT(*) FROM chamado WHERE status = 'Fechado' AND DATE(data_fechamento) = CURDATE()";
 
     public ChamadoDAO() {
         this.connection = DBConnection.getConnection();
@@ -134,47 +138,45 @@ public class ChamadoDAO implements DAO<Chamado> {
         return chamado;
     }
 
-    /**
-     * Conta o número de chamados com um status específico.
-     * @param status O status para contar (ex: "Aberto", "Em Atendimento")
-     * @return A contagem de chamados.
-     */
-    public int countByStatus(String status) {
-        String sql = "SELECT COUNT(*) FROM chamado WHERE status = ?";
+    private int contarPorStatus(String status) {
+        int count = 0;
+        // O try-with-resources garante que conn, ps, e rs sejam fechados AUTOMATICAMENTE e INDIVIDUALMENTE.
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(CONTAGEM_BASE)) {
 
-            stmt.setString(1, status);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return rs.getInt(1);
+            ps.setString(1, status);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    count = rs.getInt(1);
+                }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro ao contar chamados com status '" + status + "': " + e.getMessage());
         }
-        return 0;
+        return count;
     }
 
-    /**
-     * Conta o número de chamados fechados hoje.
-     * @return A contagem de chamados.
-     */
-    public int countFechadosHoje() {
-        // Usa CURDATE() do MySQL para pegar a data atual
-        String sql = "SELECT COUNT(*) FROM chamado WHERE status = 'Fechado' AND DATE(data_fechamento) = CURDATE()";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+    public int contarAbertos() {
+        return contarPorStatus("Aberto");
+    }
 
-            ResultSet rs = stmt.executeQuery();
+    public int contarEmAtendimento() {
+        return contarPorStatus("Em Atendimento");
+    }
+
+    public int contarFechadosHoje() {
+        int count = 0;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(CONTAGEM_FECHADOS_HOJE);
+             ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
-                return rs.getInt(1);
+                count = rs.getInt(1);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro ao contar chamados fechados hoje: " + e.getMessage());
         }
-        return 0;
+        return count;
     }
 }
 

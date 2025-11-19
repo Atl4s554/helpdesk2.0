@@ -73,7 +73,9 @@ body {
     font-weight: 500;
 }
 
-.form-group input {
+.form-group input,
+.form-group textarea,
+.form-group select {
     width: 100%;
     padding: 12px;
     border: 1px solid var(--border-color);
@@ -82,7 +84,9 @@ body {
     transition: border-color 0.3s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
     outline: none;
     border-color: var(--primary-color);
 }
@@ -98,6 +102,8 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: background-color 0.3s;
+    display: block;
+    margin-bottom: 10px;
 }
 
 .btn-primary:hover {
@@ -112,6 +118,7 @@ body {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
+    margin-bottom: 10px;
 }
 
 .btn-secondary:hover {
@@ -322,7 +329,9 @@ table tbody tr:last-child {
 .action-bar {
     margin-bottom: 20px;
     display: flex;
+    flex-direction: column;
     gap: 10px;
+    max-width: 300px;
 }
 
 .btn-small {
@@ -336,11 +345,30 @@ table tbody tr:last-child {
 .btn-success {
     background-color: var(--success-color);
     color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border: none;
+    font-weight: 600;
+}
+
+.btn-success:hover {
+    background-color: #059669;
 }
 
 .btn-danger {
     background-color: var(--danger-color);
     color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border: none;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
 }
 
 /* =========================
@@ -393,6 +421,67 @@ table tbody tr:last-child {
 }
 
 /* =========================
+   FORMS
+========================= */
+.form-atendimento {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    margin-bottom: 30px;
+}
+
+.historico-atendimentos {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+/* =========================
+   MODALS
+========================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content h4 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.form-buttons button {
+    flex: 1;
+}
+
+/* =========================
    RESPONSIVE
 ========================= */
 @media (max-width: 768px) {
@@ -412,5 +501,52 @@ table tbody tr:last-child {
 
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+
+    .action-bar {
+        max-width: 100%;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+}
+
+/* =========================
+   CUSTOM: Side-by-Side Tables
+========================= */
+.tabelas-container {
+    display: flex;
+    flex-wrap: wrap; /* Permite quebrar linha em telas menores */
+    gap: 20px;       /* Espaço entre as tabelas/wrappers */
+    margin-top: 20px;
+}
+
+.tabela-wrapper {
+    flex: 1;         /* Faz com que cada wrapper ocupe o mesmo espaço */
+    min-width: 45%;  /* Garante que não fiquem muito pequenas */
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.tabela-wrapper h4 {
+    margin-top: 0;
+}
+
+/* Garante que a tabela use o espaço do wrapper */
+.tabela-wrapper table {
+    margin-bottom: 0;
+}
+
+/* Garantir que em telas pequenas as tabelas fiquem uma abaixo da outra */
+@media (max-width: 900px) {
+    .tabelas-container {
+        flex-direction: column;
+    }
+    .tabela-wrapper {
+        min-width: 100%;
     }
 }

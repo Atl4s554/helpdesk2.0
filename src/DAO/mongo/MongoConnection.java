@@ -4,10 +4,12 @@ import Utils.ConfigUtil;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
 
 /**
  * Classe que gerencia a conexão com o MongoDB
- * Singleton pattern para garantir uma única instância
+ * Utiliza Singleton para garantir apenas uma instância.
  */
 public class MongoConnection {
 
@@ -25,16 +27,24 @@ public class MongoConnection {
             try {
                 String host = ConfigUtil.getMongoHost();
                 int port = ConfigUtil.getMongoPort();
+                String dbName = ConfigUtil.getMongoDatabase();
 
-                // Cria a connection string
-                String connectionString = String.format("mongodb://%s:%d", host, port);
-
-                // Se houver usuário e senha configurados, adiciona na string
                 String user = ConfigUtil.getProperty("db.mongo.user");
                 String password = ConfigUtil.getProperty("db.mongo.password");
 
-                if (user != null && !user.isEmpty() && password != null && !password.isEmpty()) {
-                    connectionString = String.format("mongodb://%s:%s@%s:%d", user, password, host, port);
+                String connectionString;
+
+                // === CONEXÃO SEM AUTENTICAÇÃO ===
+                if (user == null || user.isEmpty() || password == null || password.isEmpty()) {
+                    connectionString = String.format("mongodb://%s:%d", host, port);
+
+                } else {
+                    // === CONEXÃO COM AUTENTICAÇÃO CORRETA ===
+                    // URI deve incluir o DB para autenticação funcionar
+                    connectionString = String.format(
+                            "mongodb://%s:%s@%s:%d/%s?authSource=%s",
+                            user, password, host, port, dbName, dbName
+                    );
                 }
 
                 mongoClient = MongoClients.create(connectionString);
@@ -44,9 +54,6 @@ public class MongoConnection {
 
             } catch (Exception e) {
                 System.err.println("ERRO: Falha ao conectar com MongoDB.");
-                System.err.println("Verifique se:");
-                System.err.println("  1. O MongoDB está rodando");
-                System.err.println("  2. As configurações em config.properties estão corretas");
                 e.printStackTrace();
             }
         }
@@ -69,6 +76,19 @@ public class MongoConnection {
     }
 
     /**
+     * NOVO MÉTODO — Obtém uma coleção do banco
+     */
+    public static MongoCollection<Document> getCollection(String collectionName) {
+        MongoDatabase db = getDatabase();
+        if (db == null) {
+            throw new IllegalStateException(
+                    "ERRO: Banco MongoDB não inicializado antes de solicitar coleção: " + collectionName
+            );
+        }
+        return db.getCollection(collectionName);
+    }
+
+    /**
      * Fecha a conexão com o MongoDB
      */
     public static void closeConnection() {
@@ -86,14 +106,13 @@ public class MongoConnection {
     }
 
     /**
-     * Testa a conexão
+     * Testa a conexão usando ping
      */
     public static boolean testConnection() {
         try {
             MongoDatabase db = getDatabase();
             if (db != null) {
-                // Tenta executar um comando simples
-                db.runCommand(new org.bson.Document("ping", 1));
+                db.runCommand(new Document("ping", 1));
                 return true;
             }
             return false;

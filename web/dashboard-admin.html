@@ -8,18 +8,15 @@
 </head>
 <body>
 <div class="dashboard-container">
-    <!-- Header -->
     <header class="dashboard-header">
         <div class="logo">
             <h2>🎓 Help Desk UCB</h2>
         </div>
         <div class="user-info">
             <span id="usuarioNome">Administrador</span>
-            <button onclick="logout()" class="btn-secondary">Sair</button>
         </div>
     </header>
 
-    <!-- Sidebar -->
     <aside class="sidebar">
         <nav>
             <ul>
@@ -45,9 +42,7 @@
         </nav>
     </aside>
 
-    <!-- Main Content -->
     <main class="main-content">
-        <!-- Dashboard Overview -->
         <section id="secao-dashboard" class="secao-ativa">
             <h3>Dashboard Administrativo</h3>
 
@@ -78,47 +73,40 @@
             </div>
         </section>
 
-        <!-- Usuários -->
         <section id="secao-usuarios" class="secao-oculta">
             <h3>Gerenciar Usuários</h3>
 
-            <div class="action-bar">
-                <button onclick="mostrarFormNovoCliente()" class="btn-primary">
-                    ➕ Novo Cliente
-                </button>
-                <button onclick="mostrarFormNovoTecnico()" class="btn-primary">
-                    ➕ Novo Técnico
-                </button>
-            </div>
+            <div class="tabelas-container" id="lista-usuarios">
 
-            <div id="lista-usuarios">
-                <h4>Clientes</h4>
-                <table id="tabela-clientes">
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>Email</th>
-                        <th>CPF</th>
-                        <th>Ações</th>
-                    </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <div class="tabela-wrapper">
+                    <h4>Clientes</h4>
+                    <table id="tabela-clientes">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>CPF do Cliente</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
 
-                <h4>Técnicos</h4>
-                <table id="tabela-tecnicos">
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>Email</th>
-                        <th>Especialidade</th>
-                        <th>Ações</th>
-                    </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <div class="tabela-wrapper">
+                    <h4>Técnicos</h4>
+                    <table id="tabela-tecnicos">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Especialidade</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </section>
 

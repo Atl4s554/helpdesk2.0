@@ -13,6 +13,7 @@ import java.util.List;
 public class UsuarioDAO implements DAO<Usuario> {
 
     private Connection connection;
+    private static final String CONTAGEM_TOTAL = "SELECT COUNT(*) FROM usuarios";
 
     public UsuarioDAO() {
         this.connection = DBConnection.getConnection();
@@ -177,27 +178,18 @@ public class UsuarioDAO implements DAO<Usuario> {
         return usuarios;
     }
 
-    // ... (dentro da classe UsuarioDAO)
-
-    /**
-     * Conta o total de usuários (Clientes e Técnicos).
-     * @return A contagem total de usuários.
-     */
-    public int countTotalUsuarios() {
-        // Nota: Esta query assume que você tem tabelas 'cliente' e 'tecnico'
-        // Se sua tabela de usuários for unificada, ajuste a query (ex: "SELECT COUNT(*) FROM usuario")
-        String sql = "SELECT (SELECT COUNT(*) FROM cliente) + (SELECT COUNT(*) FROM tecnico)";
+    public int contarTotal() {
+        int count = 0;
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            ResultSet rs = stmt.executeQuery();
+             PreparedStatement ps = conn.prepareStatement(CONTAGEM_TOTAL);
+             ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
-                return rs.getInt(1);
+                count = rs.getInt(1);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro ao contar total de usuários: " + e.getMessage());
         }
-        return 0;
+        return count;
     }
 }

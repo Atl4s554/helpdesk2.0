@@ -11,7 +11,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Sorts.descending;
@@ -29,6 +28,10 @@ public class LogDAO {
         if (database != null) {
             this.collection = database.getCollection(COLLECTION_NAME);
         }
+    }
+
+    public MongoCollection<Document> getCollection() {
+        return collection;
     }
 
     /**

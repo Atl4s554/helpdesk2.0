@@ -2,71 +2,178 @@ package Servlet;
 
 import DAO.mongo.LogDAO;
 import Model.mongo.LogSistema;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.bson.types.ObjectId;
 
-import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.time.LocalDateTime;
 import java.util.List;
 
-// O JavaScript vai chamar esta URL: 'api/logs'
+/**
+ * Servlet responsável por consultar logs do MongoDB.
+ */
 @WebServlet("/api/logs")
 public class LogServlet extends HttpServlet {
 
     private LogDAO logDAO;
-    private Gson gson;
 
     @Override
     public void init() throws ServletException {
-        this.logDAO = new LogDAO();
-        // Configura o Gson para formatar a data corretamente
-        this.gson = new GsonBuilder()
-                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-                .create();
+        super.init();
+        logDAO = new LogDAO();
     }
 
-    /**
-     * Responde a requisições GET para buscar os logs.
-     * Aceita parâmetros de query: ?limite=X&tipo=Y
-     */
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        // 1. Pegar parâmetros da URL
-        String tipoLog = req.getParameter("tipo"); // ex: "LOGIN"
-        String limiteParam = req.getParameter("limite"); // ex: "5"
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        int limite = 50; // Limite padrão
-        if (limiteParam != null && !limiteParam.isEmpty()) {
-            try {
-                limite = Integer.parseInt(limiteParam);
-            } catch (NumberFormatException e) {
-                // Ignora limite inválido, usa o padrão
+        String action = request.getParameter("action");
+
+        try {
+            if (action == null || action.isEmpty()) {
+                listarTodos(request, response);
+                return;
             }
+
+            switch (action) {
+
+                case "buscarPorId":
+                    buscarPorId(request, response);
+                    break;
+
+                case "buscarPorUsuario":
+                    buscarPorUsuario(request, response);
+                    break;
+
+                case "buscarPorTipo":
+                    buscarPorTipo(request, response);
+                    break;
+
+                case "buscarPorPeriodo":
+                    buscarPorPeriodo(request, response);
+                    break;
+
+                default:
+                    listarTodos(request, response);
+                    break;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("erro", "Erro ao processar solicitação: " + e.getMessage());
+            request.getRequestDispatcher("/pages/logs.jsp").forward(request, response);
+        }
+    }
+
+    // ============================================================
+    // MÉTODOS AUXILIARES
+    // ============================================================
+
+    private void listarTodos(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        List<LogSistema> logs = logDAO.findAll(200);
+
+        request.setAttribute("logs", logs);
+        request.getRequestDispatcher("/pages/logs.jsp").forward(request, response);
+    }
+
+    private void buscarPorId(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String idParam = request.getParameter("id");
+
+        if (idParam == null || idParam.isEmpty()) {
+            request.setAttribute("erro", "ID do log não informado.");
+            listarTodos(request, response);
+            return;
         }
 
-        // 2. Buscar os dados do MongoDB
-        List<LogSistema> logs;
-        if (tipoLog != null && !tipoLog.isEmpty()) {
-            // Busca com filtro de tipo
-            logs = logDAO.findByTipo(tipoLog, limite);
-        } else {
-            // Busca os mais recentes sem filtro
-            logs = logDAO.findAll(limite);
+        try {
+            LogSistema log = logDAO.read(new ObjectId(idParam));
+
+            if (log == null) {
+                request.setAttribute("erro", "Nenhum log encontrado para este ID.");
+            } else {
+                request.setAttribute("logUnico", log);
+            }
+
+        } catch (Exception e) {
+            request.setAttribute("erro", "ID inválido.");
         }
 
-        // 3. Converter a Lista para JSON
-        String jsonResponse = this.gson.toJson(logs);
+        request.getRequestDispatcher("/pages/logs.jsp").forward(request, response);
+    }
 
-        // 4. Enviar a resposta JSON
-        resp.setContentType("application/json");
-        resp.setCharacterEncoding("UTF-8");
-        PrintWriter out = resp.getWriter();
-        out.print(jsonResponse);
-        out.flush();
+    private void buscarPorUsuario(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String userIdParam = request.getParameter("usuarioId");
+
+        if (userIdParam == null) {
+            request.setAttribute("erro", "ID de usuário não informado.");
+            listarTodos(request, response);
+            return;
+        }
+
+        try {
+            int userId = Integer.parseInt(userIdParam);
+
+            List<LogSistema> logs = logDAO.findByUsuarioId(userId, 200);
+
+            request.setAttribute("logs", logs);
+
+        } catch (NumberFormatException e) {
+            request.setAttribute("erro", "ID do usuário inválido.");
+        }
+
+        request.getRequestDispatcher("/pages/logs.jsp").forward(request, response);
+    }
+
+    private void buscarPorTipo(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String tipo = request.getParameter("tipo");
+
+        if (tipo == null || tipo.isEmpty()) {
+            request.setAttribute("erro", "Tipo de log não informado.");
+            listarTodos(request, response);
+            return;
+        }
+
+        List<LogSistema> logs = logDAO.findByTipo(tipo, 200);
+
+        request.setAttribute("logs", logs);
+        request.getRequestDispatcher("/pages/logs.jsp").forward(request, response);
+    }
+
+    private void buscarPorPeriodo(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String ini = request.getParameter("inicio");
+        String fim = request.getParameter("fim");
+
+        if (ini == null || fim == null || ini.isEmpty() || fim.isEmpty()) {
+            request.setAttribute("erro", "Período inválido.");
+            listarTodos(request, response);
+            return;
+        }
+
+        try {
+            LocalDateTime inicio = LocalDateTime.parse(ini);
+            LocalDateTime fimData = LocalDateTime.parse(fim);
+
+            List<LogSistema> logs = logDAO.findByPeriodo(inicio, fimData, 200);
+
+            request.setAttribute("logs", logs);
+
+        } catch (Exception e) {
+            request.setAttribute("erro", "Formato de data inválido. Use: yyyy-MM-ddTHH:mm:ss");
+        }
+
+        request.getRequestDispatcher("/pages/logs.jsp").forward(request, response);
     }
 }

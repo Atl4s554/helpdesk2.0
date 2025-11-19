@@ -15,7 +15,7 @@ import java.io.IOException;
  * Servlet para logout
  * IMPORTANTE: Usa jakarta.servlet (Tomcat 10+)
  */
-@WebServlet("/logout")
+@WebServlet("/api/logout")
 public class LogoutServlet extends HttpServlet {
 
     private UsuarioController usuarioController;

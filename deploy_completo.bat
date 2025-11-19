@@ -15,8 +15,11 @@ REM ==================================
 REM 2. LIMPAR ARQUIVOS ANTIGOS
 REM ==================================
 echo [2/5] Limpando arquivos antigos...
-del /S /Q web\WEB-INF\classes\*.class 2>nul
-del /Q web\WEB-INF\classes\*.properties 2>nul
+
+REM Limpeza completa da pasta de classes (incluindo subpastas)
+echo    Limpando web\WEB-INF\classes\...
+rd /S /Q web\WEB-INF\classes 2>nul
+mkdir web\WEB-INF\classes
 
 REM ==================================
 REM 3. COPIAR CLASSES COMPILADAS
@@ -121,9 +124,3 @@ echo ========================================
 echo  DEPLOY CONCLUIDO!
 echo ========================================
 echo.
-echo Proximos passos:
-echo 1. Restart Tomcat (Parar + Iniciar)
-echo 2. Acessar: http://localhost:8080/helpdesk
-echo 3. Login: admin@helpdesk.com / Admin123!
-echo.
-pause
